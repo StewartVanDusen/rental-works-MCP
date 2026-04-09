@@ -1,0 +1,21 @@
+{
+  "name": "rentalworks-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for RentalWorks API - Modern Lighting inventory and rental management",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "inspect": "npx @anthropic-ai/model-context-protocol inspect dist/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
