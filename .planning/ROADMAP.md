@@ -58,10 +58,11 @@ Plans:
   3. All checkout/checkin tool paths match the warehouse-v1 Swagger spec
   4. All invoice lifecycle paths (approve, process, void) match the confirmed spec
   5. Every `it()` block in the unit test suite asserts both `capturedUrl` and `capturedMethod` — no shape-only assertions remain
-**Plans:** 2 plans
+**Plans:** 3 plans
 Plans:
-- [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [x] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [ ] 03-01-PLAN.md — Fix storefront path bug, audit request-bodies.test.ts assertions, verify PATH-05/PATH-06
+- [ ] 03-02-PLAN.md — Unit tests for billing (13 tools) and admin (5 tools) domains
+- [ ] 03-03-PLAN.md — Unit tests for customer (13 tools) and settings (14 tools) domains
 
 ### Phase 4: Error Handling
 **Goal**: Auth failures, API 500s, and malformed responses are all proven to produce user-friendly structured outputs rather than silent failures or crashes
@@ -116,7 +117,7 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/1 | Not started | - |
 | 2. Swagger Validation | 2/2 | Complete   | 2026-04-10 |
-| 3. Unit Tests and Path Fixes | 0/? | Not started | - |
+| 3. Unit Tests and Path Fixes | 0/3 | Not started | - |
 | 4. Error Handling | 0/? | Not started | - |
 | 5. Integration Tests | 0/? | Not started | - |
 | 6. Expansion | 0/? | Not started | - |
