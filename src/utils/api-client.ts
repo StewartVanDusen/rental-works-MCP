@@ -224,3 +224,7 @@ export function getClient(): RentalWorksClient {
   }
   return client;
 }
+
+export function resetClient(): void {
+  client = null;
+}

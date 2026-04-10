@@ -177,7 +177,7 @@ export function registerInventoryTools(server: McpServer) {
     },
     async ({ barcode }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/item/bybarcode/${encodeURIComponent(barcode)}`);
+      const data = await client.get(`/api/v1/item/bybarcode?barCode=${encodeURIComponent(barcode)}`);
       return { content: [{ type: "text", text: formatEntity(data as any) }] };
     }
   );
@@ -186,13 +186,11 @@ export function registerInventoryTools(server: McpServer) {
 
   server.tool(
     "get_inventory_availability",
-    "Get the availability legend/status for a rental inventory item, showing quantity breakdown across statuses.",
-    {
-      inventoryId: z.string().describe("The rental inventory item ID"),
-    },
-    async ({ inventoryId }) => {
+    "Get the rental inventory availability legend — reference data explaining what each availability status means.",
+    {},
+    async () => {
       const client = getClient();
-      const data = await client.get(`/api/v1/rentalinventory/${inventoryId}/availabilitylegend`);
+      const data = await client.get("/api/v1/rentalinventory/availabilitylegend");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );

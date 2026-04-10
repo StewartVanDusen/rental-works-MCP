@@ -125,19 +125,13 @@ export function registerContractTools(server: McpServer) {
   // ── Check-Out: Browse Staging ───────────────────────────────────────────
 
   server.tool(
-    "checkout_browse",
-    "Browse items in a check-out session, showing staged vs pending items.",
-    {
-      ...browseSchema,
-      sessionId: z.string().optional().describe("Check-out session ID to filter by"),
-    },
-    async ({ sessionId, ...args }) => {
+    "browse_checked_out_items",
+    "Browse items currently checked out across orders. Shows what equipment is out in the field.",
+    browseSchema,
+    async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      if (sessionId) {
-        request.uniqueids = { SessionId: sessionId };
-      }
-      const data = await client.post("/api/v1/checkout/browse", request);
+      const data = await client.post("/api/v1/checkedoutitem/browse", request);
       return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
   );

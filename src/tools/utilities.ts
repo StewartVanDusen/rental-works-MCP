@@ -19,13 +19,13 @@ export function registerUtilityTools(server: McpServer) {
   // ── Inventory Purchase Utility ──────────────────────────────────────────
 
   server.tool(
-    "browse_inventory_purchase_utility",
-    "Browse the inventory purchase utility - helps identify items that need to be purchased/re-stocked.",
+    "browse_inventory_purchase_sessions",
+    "Browse inventory purchase sessions — tracks items being purchased/restocked.",
     browseSchema,
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/inventorypurchaseutility/browse", request);
+      const data = await client.post("/api/v1/inventorypurchasesession/browse", request);
       return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
   );
@@ -41,7 +41,7 @@ export function registerUtilityTools(server: McpServer) {
     },
     async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/changeicodeutility", args);
+      const data = await client.post("/api/v1/changeicodeutility/changeicode", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -57,7 +57,7 @@ export function registerUtilityTools(server: McpServer) {
     },
     async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/assignbarcodes", args);
+      const data = await client.post("/api/v1/assignbarcodes/assignbarcodes", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -86,7 +86,7 @@ export function registerUtilityTools(server: McpServer) {
     },
     async ({ query }) => {
       const client = getClient();
-      const data = await client.post("/api/v1/aiassistantutility", { Query: query });
+      const data = await client.post("/api/v1/aiassistantutility/ask", { Query: query });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );

@@ -14,21 +14,11 @@ export function registerStorefrontTools(server: McpServer) {
 
   server.tool(
     "storefront_browse_catalog",
-    "Browse the customer-facing storefront catalog of available rental items.",
-    {
-      categoryId: z.string().optional().describe("Filter by category ID"),
-      searchTerm: z.string().optional().describe("Search term for item name/description"),
-      page: z.number().optional().default(1).describe("Page number"),
-      pageSize: z.number().optional().default(25).describe("Results per page"),
-    },
-    async (args) => {
+    "List available storefront catalogs.",
+    {},
+    async () => {
       const client = getClient();
-      const data = await client.post("/api/v1/storefront/browse", {
-        pageno: args.page,
-        pagesize: args.pageSize,
-        searchfieldvalues: args.searchTerm ? [args.searchTerm] : undefined,
-        miscfields: args.categoryId ? { CategoryId: args.categoryId } : undefined,
-      });
+      const data = await client.get("/api/v1/storefront/catalog");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -36,14 +26,20 @@ export function registerStorefrontTools(server: McpServer) {
   // ── Storefront: Get Item Details ────────────────────────────────────────
 
   server.tool(
-    "storefront_get_item",
-    "Get detailed information for a storefront catalog item including images and availability.",
+    "storefront_get_product",
+    "Get detailed storefront product info including availability for a date range.",
     {
-      itemId: z.string().describe("The storefront item/inventory ID"),
+      productId: z.string().describe("The storefront product/inventory ID"),
+      warehouseId: z.string().describe("Warehouse ID"),
+      locationId: z.string().describe("Location ID"),
+      fromDate: z.string().describe("Start date (YYYY-MM-DD)"),
+      toDate: z.string().describe("End date (YYYY-MM-DD)"),
     },
-    async ({ itemId }) => {
+    async ({ productId, warehouseId, locationId, fromDate, toDate }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/storefront/${itemId}`);
+      const data = await client.get(
+        `/api/v1/storefront/product/${productId}/warehouseid/${warehouseId}/locationid/${locationId}/fromdate/${fromDate}/todate/${toDate}`
+      );
       return { content: [{ type: "text", text: formatEntity(data as any) }] };
     }
   );

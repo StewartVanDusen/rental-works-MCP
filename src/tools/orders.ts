@@ -113,15 +113,15 @@ export function registerOrderTools(server: McpServer) {
   // ── Delete Order ────────────────────────────────────────────────────────
 
   server.tool(
-    "delete_order",
-    "Delete an order by ID. Only works if the order has no active contracts or invoices.",
+    "cancel_order",
+    "Cancel an order by ID. Only works if the order has no active contracts or invoices.",
     {
-      orderId: z.string().describe("The order ID to delete"),
+      orderId: z.string().describe("The order ID to cancel"),
     },
     async ({ orderId }) => {
       const client = getClient();
-      await client.delete(`/api/v1/order/${orderId}`);
-      return { content: [{ type: "text", text: `Order ${orderId} deleted.` }] };
+      await client.post(`/api/v1/order/cancel/${orderId}`);
+      return { content: [{ type: "text", text: `Order ${orderId} cancelled.` }] };
     }
   );
 
@@ -174,7 +174,7 @@ export function registerOrderTools(server: McpServer) {
     },
     async ({ orderId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/order/${orderId}/createinvoice`);
+      const data = await client.post("/api/v1/order/createinvoice", { OrderId: orderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -250,31 +250,17 @@ export function registerOrderTools(server: McpServer) {
     "Convert an approved quote into an active order.",
     {
       quoteId: z.string().describe("The quote ID to convert"),
+      locationId: z.string().describe("Location ID for the new order"),
+      warehouseId: z.string().describe("Warehouse ID for the new order"),
     },
-    async ({ quoteId }) => {
+    async ({ quoteId, locationId, warehouseId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/quote/${quoteId}/createorder`);
+      const data = await client.post("/api/v1/quote/createorder", {
+        QuoteId: quoteId,
+        LocationId: locationId,
+        WarehouseId: warehouseId,
+      });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
-  );
-
-  // ── Order Status Browse ─────────────────────────────────────────────────
-
-  server.tool(
-    "browse_order_status",
-    "Browse the current status of orders, including item-level staging and contract status.",
-    {
-      ...browseSchema,
-      orderId: z.string().optional().describe("Filter by specific order ID"),
-    },
-    async ({ orderId, ...args }) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      if (orderId) {
-        request.uniqueids = { OrderId: orderId };
-      }
-      const data = await client.post("/api/v1/orderstatus/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
   );
 
@@ -290,8 +276,8 @@ export function registerOrderTools(server: McpServer) {
     async ({ orderId, discountPercent }) => {
       const client = getClient();
       const data = await client.post(
-        `/api/v1/order/${orderId}/applybottomlinediscountpercent`,
-        { DiscountPercent: discountPercent }
+        "/api/v1/order/applybottomlinediscountpercent",
+        { OrderId: orderId, DiscountPercent: discountPercent }
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }

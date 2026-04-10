@@ -122,7 +122,7 @@ export function registerVendorTools(server: McpServer) {
     },
     async ({ purchaseOrderId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/purchaseorder/${purchaseOrderId}/submitforapproval`);
+      const data = await client.post("/api/v1/purchaseorder/submitforapproval", { PurchaseOrderId: purchaseOrderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -135,7 +135,7 @@ export function registerVendorTools(server: McpServer) {
     },
     async ({ purchaseOrderId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/purchaseorder/${purchaseOrderId}/firstapprove`);
+      const data = await client.post("/api/v1/purchaseorder/firstapprove", { PurchaseOrderId: purchaseOrderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
@@ -145,11 +145,16 @@ export function registerVendorTools(server: McpServer) {
     "Reject a purchase order in the approval workflow.",
     {
       purchaseOrderId: z.string().describe("The PO ID to reject"),
-      Reason: z.string().optional().describe("Rejection reason"),
+      rejectReasonNote: z.string().optional().describe("Rejection reason note"),
+      rejectReasonId: z.string().optional().describe("Rejection reason ID"),
     },
-    async ({ purchaseOrderId, Reason }) => {
+    async ({ purchaseOrderId, rejectReasonNote, rejectReasonId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/purchaseorder/${purchaseOrderId}/reject`, { Reason });
+      const data = await client.post("/api/v1/purchaseorder/reject", {
+        PurchaseOrderId: purchaseOrderId,
+        RejectReasonNote: rejectReasonNote,
+        ...(rejectReasonId ? { RejectReasonId: rejectReasonId } : {}),
+      });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );

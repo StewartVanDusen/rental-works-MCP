@@ -53,8 +53,8 @@ export function registerReportTools(server: McpServer) {
   // ── Browse Report Data ──────────────────────────────────────────────────
 
   server.tool(
-    "browse_report",
-    "Browse the data for any report module. Returns tabular data with pagination.",
+    "run_report_data",
+    "Run a report and get its data output. Returns tabular data with pagination.",
     {
       reportName: z.string().describe("Report module name (e.g. 'DealOutstandingItemsReport')"),
       ...browseSchema,
@@ -62,7 +62,7 @@ export function registerReportTools(server: McpServer) {
     async ({ reportName, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const endpoint = `/api/v1/${reportName.toLowerCase()}/browse`;
+      const endpoint = `/api/v1/${reportName.toLowerCase()}/runreport`;
       const data = await client.post(endpoint, request);
       return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
@@ -133,7 +133,7 @@ export function registerReportTools(server: McpServer) {
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/availabilityconflicts/browse", request);
+      const data = await client.post("/api/v1/availabilityconflicts/conflicts", request);
       return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
   );

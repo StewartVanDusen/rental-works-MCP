@@ -85,17 +85,4 @@ export function registerAdminTools(server: McpServer) {
     }
   );
 
-  // ── Browse Activity Log ─────────────────────────────────────────────────
-
-  server.tool(
-    "browse_activity",
-    "Browse system activity log entries (audit trail of user actions).",
-    browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/activity/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
-  );
 }
