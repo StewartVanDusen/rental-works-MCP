@@ -1,7 +1,7 @@
 {
   "name": "rentalworks-mcp-server",
   "version": "0.1.0",
-  "description": "MCP server for RentalWorks API - Modern Lighting inventory and rental management",
+  "description": "MCP server for RentalWorks API - inventory and rental management",
   "type": "module",
   "main": "dist/index.js",
   "scripts": {

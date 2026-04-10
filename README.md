@@ -1,6 +1,6 @@
 # RentalWorks MCP Server
 
-MCP server for the [RentalWorks](https://www.dbsrentals.com/rentalworks/) rental management platform, built for Modern Lighting. Exposes 114 tools across 11 domains covering the full rental lifecycle.
+MCP server for the [RentalWorks](https://www.dbsrentals.com/rentalworks/) rental management platform. Exposes 114 tools across 11 domains covering the full rental lifecycle.
 
 ## Domains
 
@@ -34,7 +34,7 @@ npm install
 ### Environment Variables
 
 ```bash
-RENTALWORKS_BASE_URL=https://modernlighting.rentalworks.cloud  # default
+RENTALWORKS_BASE_URL=https://<your-instance>.rentalworks.cloud
 RENTALWORKS_USERNAME=your-username
 RENTALWORKS_PASSWORD=your-password
 ```
@@ -100,4 +100,4 @@ Tests use vitest with the MCP SDK's `InMemoryTransport` to spin up a real server
 
 ## API Reference
 
-The server connects to the RentalWorks REST API with JWT bearer authentication. API docs: https://modernlighting.rentalworks.cloud/swagger/index.html
+The server connects to the RentalWorks REST API with JWT bearer authentication. API docs: `https://<your-instance>.rentalworks.cloud/swagger/index.html`

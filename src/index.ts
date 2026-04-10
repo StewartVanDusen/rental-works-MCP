@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * RentalWorks MCP Server - Modern Lighting
+ * RentalWorks MCP Server
  *
  * MCP server for the RentalWorks rental management platform.
  * Provides 80+ tools across 8 domains covering the full rental lifecycle:
@@ -18,11 +18,11 @@
  *   Storefront - Customer-facing catalog
  *   Utilities  - Barcodes, AI assistant, QBO sync, raw API access
  *
- * API: https://modernlighting.rentalworks.cloud/swagger/index.html
+ * API: https://<your-instance>.rentalworks.cloud/swagger/index.html
  * Auth: JWT Bearer token (POST /api/v1/jwt)
  *
  * Environment variables:
- *   RENTALWORKS_BASE_URL  - API base URL (default: https://modernlighting.rentalworks.cloud)
+ *   RENTALWORKS_BASE_URL  - API base URL (e.g. https://<your-instance>.rentalworks.cloud)
  *   RENTALWORKS_USERNAME  - API username
  *   RENTALWORKS_PASSWORD  - API password
  */
@@ -46,7 +46,7 @@ const server = new McpServer({
   name: "rentalworks",
   version: "0.1.0",
   description:
-    "RentalWorks rental management platform - inventory, orders, billing, warehouse operations, and reporting for Modern Lighting",
+    "RentalWorks rental management platform - inventory, orders, billing, warehouse operations, and reporting",
 });
 
 // Register all tool domains

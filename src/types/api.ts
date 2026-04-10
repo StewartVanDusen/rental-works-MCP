@@ -1,6 +1,6 @@
 /**
  * RentalWorks API type definitions
- * Base URL: https://modernlighting.rentalworks.cloud
+ * Base URL: https://<your-instance>.rentalworks.cloud
  * Auth: JWT Bearer token via POST /api/v1/jwt
  */
 

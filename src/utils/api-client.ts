@@ -1,6 +1,5 @@
 /**
  * RentalWorks API client with JWT authentication
- * Base: https://modernlighting.rentalworks.cloud/api/v1
  */
 
 import type {
@@ -13,7 +12,7 @@ import type {
 
 const BASE_URL =
   process.env.RENTALWORKS_BASE_URL ||
-  "https://modernlighting.rentalworks.cloud";
+  "";
 
 export class RentalWorksClient {
   private token: string | null = null;
