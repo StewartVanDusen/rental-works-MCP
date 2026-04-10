@@ -94,6 +94,14 @@ describe.skipIf(!isLiveEnv)("Live API Integration Tests", () => {
         expect(result.Rows[0]).toHaveProperty("Deal");
       }
     }, 10000);
+
+    it("browses address - valid shape", async () => {
+      const result = await client.browse<Record<string, unknown>>("address", { pagesize: 5 });
+      expect(result).toHaveProperty("TotalRows");
+      expect(result).toHaveProperty("Rows");
+      expect(Array.isArray(result.Rows)).toBe(true);
+      expect(typeof result.TotalRows).toBe("number");
+    }, 10000);
   });
 
   // -- GET-BY-ID TESTS --
@@ -169,6 +177,14 @@ describe.skipIf(!isLiveEnv)("Live API Integration Tests", () => {
       const record = await client.getById<Record<string, unknown>>("warehouse", id);
       expect(record).toHaveProperty("WarehouseId");
       expect(record).toHaveProperty("Warehouse");
+    }, 10000);
+
+    it("gets address by ID", async () => {
+      const browse = await client.browse<Record<string, unknown>>("address", { pagesize: 1 });
+      if (browse.TotalRows === 0) return; // no data - skip gracefully
+      const id = browse.Rows[0]["AddressId"] as string;
+      const record = await client.getById<Record<string, unknown>>("address", id);
+      expect(record).toHaveProperty("AddressId");
     }, 10000);
   });
 });
