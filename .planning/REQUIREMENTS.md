@@ -14,7 +14,7 @@
 
 ### Path Validation
 
-- [ ] **PATH-01**: All 114 existing tool API paths audited against the 12 Swagger sub-specs
+- [x] **PATH-01**: All 114 existing tool API paths audited against the 12 Swagger sub-specs
 - [x] **PATH-02**: Sub-spec domain mapping table built (tool → Swagger spec → confirmed path)
 - [ ] **PATH-03**: All incorrect API paths fixed to match Swagger spec
 - [ ] **PATH-04**: Storefront category browsing path corrected to match storefront-v1 spec
@@ -80,7 +80,7 @@
 | FOUND-02 | Phase 1 | Pending |
 | FOUND-03 | Phase 1 | Pending |
 | FOUND-04 | Phase 1 | Pending |
-| PATH-01 | Phase 2 | Pending |
+| PATH-01 | Phase 2 | Complete |
 | PATH-02 | Phase 2 | Complete |
 | PATH-03 | Phase 3 | Pending |
 | PATH-04 | Phase 3 | Pending |

@@ -61,7 +61,7 @@ Plans:
 **Plans:** 2 plans
 Plans:
 - [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [x] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 4: Error Handling
 **Goal**: Auth failures, API 500s, and malformed responses are all proven to produce user-friendly structured outputs rather than silent failures or crashes
@@ -74,7 +74,7 @@ Plans:
   4. `withErrorHandling` is confirmed to detect known RentalWorks server-side issues and surface them as structured errors
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
 - [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 5: Integration Tests
