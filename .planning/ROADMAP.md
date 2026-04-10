@@ -90,7 +90,7 @@ Plans:
   5. `/api/v1/account/session` returns a valid session object during integration runs
 **Plans:** 1 plan
 Plans:
-- [ ] 05-01-PLAN.md — Integration test suite: vitest config timeouts + live API test file (auth, browse, GET-by-ID, session)
+- [x] 05-01-PLAN.md — Integration test suite: vitest config timeouts + live API test file (auth, browse, GET-by-ID, session)
 
 ### Phase 6: Expansion
 **Goal**: High-value missing endpoints are added as new tools that follow the validated patterns and pass Swagger-backed path assertions
