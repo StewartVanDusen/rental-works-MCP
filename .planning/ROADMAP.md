@@ -43,7 +43,10 @@ Plans:
   2. A sub-spec domain mapping table exists documenting which tool domain maps to which Swagger sub-spec
   3. `swagger-spec.test.ts` runs against all 114 tools and produces a list of path mismatches (pass or explicit report — no silent gaps)
   4. The exact set of incorrect paths is known and documented before any fixes begin
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 3: Unit Tests and Path Fixes
 **Goal**: All 114 tools have correct API paths and a unit test that asserts the exact HTTP method, URL path, and request body shape
@@ -55,7 +58,10 @@ Plans:
   3. All checkout/checkin tool paths match the warehouse-v1 Swagger spec
   4. All invoice lifecycle paths (approve, process, void) match the confirmed spec
   5. Every `it()` block in the unit test suite asserts both `capturedUrl` and `capturedMethod` — no shape-only assertions remain
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 4: Error Handling
 **Goal**: Auth failures, API 500s, and malformed responses are all proven to produce user-friendly structured outputs rather than silent failures or crashes
@@ -66,7 +72,10 @@ Plans:
   2. A 401/403 response triggers the JWT re-authentication path (confirmed via test)
   3. An HTML error page or empty body returned from the API is handled gracefully without a parse crash
   4. `withErrorHandling` is confirmed to detect known RentalWorks server-side issues and surface them as structured errors
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 5: Integration Tests
 **Goal**: The MCP server is confirmed to work correctly against the real RentalWorks API instance using read-only requests
@@ -78,7 +87,10 @@ Plans:
   3. Browse smoke tests for inventory, orders, customers, and deals return non-empty results with the expected field shapes
   4. At least one GET-by-ID test per domain returns a record matching the expected schema
   5. `/api/v1/account/session` returns a valid session object during integration runs
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 6: Expansion
 **Goal**: High-value missing endpoints are added as new tools that follow the validated patterns and pass Swagger-backed path assertions
@@ -89,7 +101,10 @@ Plans:
   2. A change order status utility tool is available and calls the confirmed utilities-v1 API path
   3. Every new tool has a unit test asserting `capturedUrl`, `capturedMethod`, and request body shape
   4. Integration smoke tests for new read-capable tools pass against the live instance
-**Plans**: TBD
+**Plans:** 2 plans
+Plans:
+- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ## Progress
 
