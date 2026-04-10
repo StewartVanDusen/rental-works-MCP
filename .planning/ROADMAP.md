@@ -30,7 +30,9 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `vitest --project unit` runs only unit tests; `vitest --project integration` runs only integration tests
   3. Existing 5 test files are located under `src/__tests__/unit/` and all pass after relocation
   4. `vitest.config.ts` has a `projects` array defining separate `unit` and `integration` test configurations
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 01-01-PLAN.md — Add missing deps (zod, coverage), restructure tests into unit/integration dirs, configure Vitest projects
 
 ### Phase 2: Swagger Validation
 **Goal**: Every one of the 114 tool API paths has been compared against the authoritative Swagger spec and a confirmed list of path bugs has been produced
@@ -97,7 +99,7 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/? | Not started | - |
+| 1. Foundation | 0/1 | Not started | - |
 | 2. Swagger Validation | 0/? | Not started | - |
 | 3. Unit Tests and Path Fixes | 0/? | Not started | - |
 | 4. Error Handling | 0/? | Not started | - |
