@@ -3,9 +3,9 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { registerOrderTools } from "../tools/orders.js";
-import { registerVendorTools } from "../tools/vendors.js";
-import { resetClient } from "../utils/api-client.js";
+import { registerOrderTools } from "../../tools/orders.js";
+import { registerVendorTools } from "../../tools/vendors.js";
+import { resetClient } from "../../utils/api-client.js";
 
 let client: Client;
 let capturedBody: any;

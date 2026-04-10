@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildBrowseRequest, formatBrowseResult, formatEntity } from "../utils/tool-helpers.js";
+import { buildBrowseRequest, formatBrowseResult, formatEntity } from "../../utils/tool-helpers.js";
 
 describe("buildBrowseRequest", () => {
   it("returns defaults with no args", () => {

@@ -3,17 +3,17 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { registerInventoryTools } from "../tools/inventory.js";
-import { registerOrderTools } from "../tools/orders.js";
-import { registerCustomerTools } from "../tools/customers.js";
-import { registerContractTools } from "../tools/contracts.js";
-import { registerBillingTools } from "../tools/billing.js";
-import { registerVendorTools } from "../tools/vendors.js";
-import { registerReportTools } from "../tools/reports.js";
-import { registerSettingsTools } from "../tools/settings.js";
-import { registerAdminTools } from "../tools/admin.js";
-import { registerStorefrontTools } from "../tools/storefront.js";
-import { registerUtilityTools } from "../tools/utilities.js";
+import { registerInventoryTools } from "../../tools/inventory.js";
+import { registerOrderTools } from "../../tools/orders.js";
+import { registerCustomerTools } from "../../tools/customers.js";
+import { registerContractTools } from "../../tools/contracts.js";
+import { registerBillingTools } from "../../tools/billing.js";
+import { registerVendorTools } from "../../tools/vendors.js";
+import { registerReportTools } from "../../tools/reports.js";
+import { registerSettingsTools } from "../../tools/settings.js";
+import { registerAdminTools } from "../../tools/admin.js";
+import { registerStorefrontTools } from "../../tools/storefront.js";
+import { registerUtilityTools } from "../../tools/utilities.js";
 
 let tools: Array<{ name: string; description?: string; inputSchema: any }>;
 

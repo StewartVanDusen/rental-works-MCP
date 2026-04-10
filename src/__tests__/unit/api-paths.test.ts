@@ -3,14 +3,14 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-import { registerInventoryTools } from "../tools/inventory.js";
-import { registerOrderTools } from "../tools/orders.js";
-import { registerContractTools } from "../tools/contracts.js";
-import { registerVendorTools } from "../tools/vendors.js";
-import { registerReportTools } from "../tools/reports.js";
-import { registerStorefrontTools } from "../tools/storefront.js";
-import { registerUtilityTools } from "../tools/utilities.js";
-import { resetClient } from "../utils/api-client.js";
+import { registerInventoryTools } from "../../tools/inventory.js";
+import { registerOrderTools } from "../../tools/orders.js";
+import { registerContractTools } from "../../tools/contracts.js";
+import { registerVendorTools } from "../../tools/vendors.js";
+import { registerReportTools } from "../../tools/reports.js";
+import { registerStorefrontTools } from "../../tools/storefront.js";
+import { registerUtilityTools } from "../../tools/utilities.js";
+import { resetClient } from "../../utils/api-client.js";
 
 let client: Client;
 let capturedUrl: string;
