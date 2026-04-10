@@ -43,9 +43,9 @@ Plans:
   2. A sub-spec domain mapping table exists documenting which tool domain maps to which Swagger sub-spec
   3. `swagger-spec.test.ts` runs against all 114 tools and produces a list of path mismatches (pass or explicit report — no silent gaps)
   4. The exact set of incorrect paths is known and documented before any fixes begin
-**Plans:** 2 plans
+**Plans:** 1/2 plans executed
 Plans:
-- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
 - [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 3: Unit Tests and Path Fixes
@@ -115,7 +115,7 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/1 | Not started | - |
-| 2. Swagger Validation | 0/? | Not started | - |
+| 2. Swagger Validation | 1/2 | In Progress|  |
 | 3. Unit Tests and Path Fixes | 0/? | Not started | - |
 | 4. Error Handling | 0/? | Not started | - |
 | 5. Integration Tests | 0/? | Not started | - |

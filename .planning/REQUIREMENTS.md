@@ -15,12 +15,12 @@
 ### Path Validation
 
 - [ ] **PATH-01**: All 114 existing tool API paths audited against the 12 Swagger sub-specs
-- [ ] **PATH-02**: Sub-spec domain mapping table built (tool → Swagger spec → confirmed path)
+- [x] **PATH-02**: Sub-spec domain mapping table built (tool → Swagger spec → confirmed path)
 - [ ] **PATH-03**: All incorrect API paths fixed to match Swagger spec
 - [ ] **PATH-04**: Storefront category browsing path corrected to match storefront-v1 spec
 - [ ] **PATH-05**: Checkout/checkin paths verified against warehouse-v1 spec
 - [ ] **PATH-06**: Invoice lifecycle paths (approve, process, void) verified against home-v1 spec
-- [ ] **PATH-07**: Automated Swagger spec parser that fetches and diffs tool paths against live spec JSON
+- [x] **PATH-07**: Automated Swagger spec parser that fetches and diffs tool paths against live spec JSON
 
 ### Unit Tests
 
@@ -81,12 +81,12 @@
 | FOUND-03 | Phase 1 | Pending |
 | FOUND-04 | Phase 1 | Pending |
 | PATH-01 | Phase 2 | Pending |
-| PATH-02 | Phase 2 | Pending |
+| PATH-02 | Phase 2 | Complete |
 | PATH-03 | Phase 3 | Pending |
 | PATH-04 | Phase 3 | Pending |
 | PATH-05 | Phase 3 | Pending |
 | PATH-06 | Phase 3 | Pending |
-| PATH-07 | Phase 2 | Pending |
+| PATH-07 | Phase 2 | Complete |
 | TEST-01 | Phase 3 | Pending |
 | TEST-02 | Phase 3 | Pending |
 | TEST-03 | Phase 3 | Pending |
