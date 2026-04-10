@@ -103,8 +103,8 @@ Plans:
   4. Integration smoke tests for new read-capable tools pass against the live instance
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [ ] 06-01-PLAN.md — Create address CRUD tools and change_order_status utility tool
+- [ ] 06-02-PLAN.md — Unit tests and integration smoke tests for all new tools
 
 ## Progress
 
@@ -119,4 +119,4 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 | 3. Unit Tests and Path Fixes | 0/3 | Not started | - |
 | 4. Error Handling | 0/2 | Not started | - |
 | 5. Integration Tests | 0/1 | Not started | - |
-| 6. Expansion | 0/? | Not started | - |
+| 6. Expansion | 0/2 | Not started | - |
