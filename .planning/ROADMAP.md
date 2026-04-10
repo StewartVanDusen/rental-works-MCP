@@ -103,8 +103,8 @@ Plans:
   4. Integration smoke tests for new read-capable tools pass against the live instance
 **Plans:** 2 plans
 Plans:
-- [ ] 06-01-PLAN.md — Create address CRUD tools and change_order_status utility tool
-- [ ] 06-02-PLAN.md — Unit tests and integration smoke tests for all new tools
+- [x] 06-01-PLAN.md — Create address CRUD tools and change_order_status utility tool
+- [x] 06-02-PLAN.md — Unit tests and integration smoke tests for all new tools
 
 ## Progress
 
