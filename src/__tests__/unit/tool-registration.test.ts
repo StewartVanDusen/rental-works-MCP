@@ -42,7 +42,7 @@ beforeAll(async () => {
 
 describe("tool registration", () => {
   it("registers the expected number of tools", () => {
-    expect(tools.length).toBe(114);
+    expect(tools.length).toBe(115);
   });
 
   it("has no duplicate tool names", () => {
