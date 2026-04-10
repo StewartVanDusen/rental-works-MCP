@@ -13,7 +13,7 @@ This milestone hardens an existing 114-tool MCP server from "works on my machine
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Foundation** - Fix missing `zod` dep, reorganize test structure, configure Vitest projects
-- [ ] **Phase 2: Swagger Validation** - Build spec-loading machinery and produce a path-mismatch report across all 114 tools
+- [x] **Phase 2: Swagger Validation** - Build spec-loading machinery and produce a path-mismatch report across all 114 tools (completed 2026-04-10)
 - [ ] **Phase 3: Unit Tests and Path Fixes** - Fix all discovered broken paths and write complete unit tests for every tool
 - [ ] **Phase 4: Error Handling** - Prove auth failures, 500 wrapping, and malformed responses via targeted tests
 - [ ] **Phase 5: Integration Tests** - Read-only live API smoke tests confirming reality against the actual instance
@@ -43,10 +43,10 @@ Plans:
   2. A sub-spec domain mapping table exists documenting which tool domain maps to which Swagger sub-spec
   3. `swagger-spec.test.ts` runs against all 114 tools and produces a list of path mismatches (pass or explicit report — no silent gaps)
   4. The exact set of incorrect paths is known and documented before any fixes begin
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 Plans:
 - [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [x] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 3: Unit Tests and Path Fixes
 **Goal**: All 114 tools have correct API paths and a unit test that asserts the exact HTTP method, URL path, and request body shape
@@ -60,7 +60,7 @@ Plans:
   5. Every `it()` block in the unit test suite asserts both `capturedUrl` and `capturedMethod` — no shape-only assertions remain
 **Plans:** 2 plans
 Plans:
-- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
+- [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
 - [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
 
 ### Phase 4: Error Handling
@@ -115,7 +115,7 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/1 | Not started | - |
-| 2. Swagger Validation | 1/2 | In Progress|  |
+| 2. Swagger Validation | 2/2 | Complete   | 2026-04-10 |
 | 3. Unit Tests and Path Fixes | 0/? | Not started | - |
 | 4. Error Handling | 0/? | Not started | - |
 | 5. Integration Tests | 0/? | Not started | - |
