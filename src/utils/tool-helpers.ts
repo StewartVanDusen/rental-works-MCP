@@ -132,3 +132,68 @@ export function formatEntity(data: Record<string, unknown>): string {
   }
   return lines.join("\n");
 }
+
+type ToolResult = {
+  content: { type: "text"; text: string }[];
+  isError?: boolean;
+};
+
+/**
+ * Wrap a tool handler with error handling for known RentalWorks server issues.
+ *
+ * Known pattern branches (informational — no isError):
+ * - "Invalid column name" → known DB column reference issue
+ * - "503" → service temporarily unavailable
+ * - "500" + "NullReference" → NullReferenceException server bug
+ *
+ * Generic fallback → returns isError: true
+ */
+export function withErrorHandling(
+  handler: (...handlerArgs: unknown[]) => Promise<ToolResult>
+): (...handlerArgs: unknown[]) => Promise<ToolResult> {
+  return async (...args: unknown[]): Promise<ToolResult> => {
+    try {
+      return await handler(...args);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+
+      if (message.includes("Invalid column name")) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Note: ${message}\n\nThis is a known issue with the RW server — certain column references are invalid for this entity. Try a different search field or remove the filter.`,
+            },
+          ],
+        };
+      }
+
+      if (message.includes("503")) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Service unavailable (503): The RentalWorks API is temporarily unavailable. Please try again in a moment.`,
+            },
+          ],
+        };
+      }
+
+      if (message.includes("500") && message.includes("NullReference")) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Server error: The RentalWorks API returned a NullReferenceException. This is a known server-side bug for this operation. Try different parameters or contact RW support.`,
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [{ type: "text", text: `Error: ${message}` }],
+        isError: true,
+      };
+    }
+  };
+}
