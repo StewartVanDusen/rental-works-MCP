@@ -32,7 +32,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `vitest.config.ts` has a `projects` array defining separate `unit` and `integration` test configurations
 **Plans:** 1 plan
 Plans:
-- [ ] 01-01-PLAN.md — Add missing deps (zod, coverage), restructure tests into unit/integration dirs, configure Vitest projects
+- [x] 01-01-PLAN.md — Add missing deps (zod, coverage), restructure tests into unit/integration dirs, configure Vitest projects
 
 ### Phase 2: Swagger Validation
 **Goal**: Every one of the 114 tool API paths has been compared against the authoritative Swagger spec and a confirmed list of path bugs has been produced
