@@ -150,7 +150,7 @@ export function registerUtilityTools(server: McpServer) {
     },
     async ({ entityType, entityId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/${entityType}/${entityId}/synctoqbo`);
+      const data = await client.post(`/api/v1/${entityType}/synctoqbo`, { Id: entityId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
