@@ -713,8 +713,8 @@ describe("swagger spec validation", () => {
       expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
     });
 
-    it("storefront_browse_categories → POST /api/v1/storefrontcatalog/browse", async () => {
-      await callTool("storefront_browse_categories", {});
+    it("storefront_browse_categories → GET /api/v1/storefront/catalog/{id}/categorytree", async () => {
+      await callTool("storefront_browse_categories", { catalogId: "CAT1" });
       expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
     });
   });
