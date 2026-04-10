@@ -88,10 +88,9 @@ Plans:
   3. Browse smoke tests for inventory, orders, customers, and deals return non-empty results with the expected field shapes
   4. At least one GET-by-ID test per domain returns a record matching the expected schema
   5. `/api/v1/account/session` returns a valid session object during integration runs
-**Plans:** 2 plans
+**Plans:** 1 plan
 Plans:
-- [ ] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [ ] 05-01-PLAN.md — Integration test suite: vitest config timeouts + live API test file (auth, browse, GET-by-ID, session)
 
 ### Phase 6: Expansion
 **Goal**: High-value missing endpoints are added as new tools that follow the validated patterns and pass Swagger-backed path assertions
@@ -110,7 +109,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in parallel after Phase 3.
 
 | Phase | Plans Complete | Status | Completed |
@@ -119,5 +118,5 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 | 2. Swagger Validation | 2/2 | Complete   | 2026-04-10 |
 | 3. Unit Tests and Path Fixes | 0/3 | Not started | - |
 | 4. Error Handling | 0/2 | Not started | - |
-| 5. Integration Tests | 0/? | Not started | - |
+| 5. Integration Tests | 0/1 | Not started | - |
 | 6. Expansion | 0/? | Not started | - |
