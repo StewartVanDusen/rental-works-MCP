@@ -75,8 +75,8 @@ Plans:
   4. `withErrorHandling` is confirmed to detect known RentalWorks server-side issues and surface them as structured errors
 **Plans:** 2 plans
 Plans:
-- [x] 02-01-PLAN.md — Fetch all 12 Swagger sub-specs and generate merged path cache
-- [ ] 02-02-PLAN.md — Validate all 114 tool paths against cached Swagger spec
+- [ ] 04-01-PLAN.md — Add 401/403 retry logic and JSON.parse guard to api-client.ts
+- [ ] 04-02-PLAN.md — Error handling test suite (TEST-06 through TEST-09)
 
 ### Phase 5: Integration Tests
 **Goal**: The MCP server is confirmed to work correctly against the real RentalWorks API instance using read-only requests
@@ -118,6 +118,6 @@ Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in par
 | 1. Foundation | 0/1 | Not started | - |
 | 2. Swagger Validation | 2/2 | Complete   | 2026-04-10 |
 | 3. Unit Tests and Path Fixes | 0/3 | Not started | - |
-| 4. Error Handling | 0/? | Not started | - |
+| 4. Error Handling | 0/2 | Not started | - |
 | 5. Integration Tests | 0/? | Not started | - |
 | 6. Expansion | 0/? | Not started | - |
