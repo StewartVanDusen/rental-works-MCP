@@ -60,9 +60,9 @@ Plans:
   5. Every `it()` block in the unit test suite asserts both `capturedUrl` and `capturedMethod` — no shape-only assertions remain
 **Plans:** 3 plans
 Plans:
-- [ ] 03-01-PLAN.md — Fix storefront path bug, audit request-bodies.test.ts assertions, verify PATH-05/PATH-06
-- [ ] 03-02-PLAN.md — Unit tests for billing (13 tools) and admin (5 tools) domains
-- [ ] 03-03-PLAN.md — Unit tests for customer (13 tools) and settings (14 tools) domains
+- [x] 03-01-PLAN.md — Fix storefront path bug, audit request-bodies.test.ts assertions, verify PATH-05/PATH-06
+- [x] 03-02-PLAN.md — Unit tests for billing (13 tools) and admin (5 tools) domains
+- [x] 03-03-PLAN.md — Unit tests for customer (13 tools) and settings (14 tools) domains
 
 ### Phase 4: Error Handling
 **Goal**: Auth failures, API 500s, and malformed responses are all proven to produce user-friendly structured outputs rather than silent failures or crashes
