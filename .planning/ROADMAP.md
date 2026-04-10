@@ -75,8 +75,8 @@ Plans:
   4. `withErrorHandling` is confirmed to detect known RentalWorks server-side issues and surface them as structured errors
 **Plans:** 2 plans
 Plans:
-- [ ] 04-01-PLAN.md — Add 401/403 retry logic and JSON.parse guard to api-client.ts
-- [ ] 04-02-PLAN.md — Error handling test suite (TEST-06 through TEST-09)
+- [x] 04-01-PLAN.md — Add 401/403 retry logic and JSON.parse guard to api-client.ts
+- [x] 04-02-PLAN.md — Error handling test suite (TEST-06 through TEST-09)
 
 ### Phase 5: Integration Tests
 **Goal**: The MCP server is confirmed to work correctly against the real RentalWorks API instance using read-only requests
