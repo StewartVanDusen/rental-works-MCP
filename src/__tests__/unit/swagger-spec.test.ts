@@ -25,6 +25,7 @@ import { registerReportTools } from "../../tools/reports.js";
 import { registerAdminTools } from "../../tools/admin.js";
 import { registerStorefrontTools } from "../../tools/storefront.js";
 import { registerUtilityTools } from "../../tools/utilities.js";
+import { registerAddressTools } from "../../tools/addresses.js";
 import { resetClient } from "../../utils/api-client.js";
 
 // ── Swagger cache loading ────────────────────────────────────────────────────
@@ -96,6 +97,7 @@ beforeAll(async () => {
   registerAdminTools(server);
   registerStorefrontTools(server);
   registerUtilityTools(server);
+  registerAddressTools(server);
 
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await server.connect(serverTransport);
@@ -145,7 +147,7 @@ function capturePath(): string {
 describe("swagger spec validation", () => {
   it("covers all registered tools", async () => {
     const { tools } = await client.listTools();
-    expect(tools.length).toBe(114);
+    expect(tools.length).toBe(120);
   });
 
   // ── Inventory (12 tools) ─────────────────────────────────────────────────
@@ -764,6 +766,40 @@ describe("swagger spec validation", () => {
 
     it("sync_to_quickbooks → POST /api/v1/{entity}/synctoqbo", async () => {
       await callTool("sync_to_quickbooks", { entityType: "customer", entityId: "CU1" });
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+
+    it("change_order_status → POST /api/v1/changeorderstatus/changestatus", async () => {
+      await callTool("change_order_status", { OrderId: "O1", StatusId: "S1" });
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+  });
+
+  // ── Addresses (5 tools) ──────────────────────────────────────────────────
+
+  describe("addresses (5 tools)", () => {
+    it("browse_addresses → POST /api/v1/address/browse", async () => {
+      await callTool("browse_addresses", {});
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+
+    it("get_address → GET /api/v1/address/{id}", async () => {
+      await callTool("get_address", { addressId: "A1" });
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+
+    it("create_address → POST /api/v1/address", async () => {
+      await callTool("create_address", { Address1: "Test" });
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+
+    it("update_address → PUT /api/v1/address/{id}", async () => {
+      await callTool("update_address", { AddressId: "A1", Address1: "Updated" });
+      expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
+    });
+
+    it("delete_address → DELETE /api/v1/address/{id}", async () => {
+      await callTool("delete_address", { addressId: "A1" });
       expect(urlExistsInSpec(capturePath(), capturedMethod)).toBe(true);
     });
   });
