@@ -48,17 +48,13 @@ export function registerStorefrontTools(server: McpServer) {
 
   server.tool(
     "storefront_browse_categories",
-    "Browse the storefront catalog categories available to customers.",
+    "Browse the category tree for a storefront catalog. Returns the hierarchical categories customers see.",
     {
-      page: z.number().optional().default(1),
-      pageSize: z.number().optional().default(50),
+      catalogId: z.string().describe("The storefront catalog ID"),
     },
-    async (args) => {
+    async ({ catalogId }) => {
       const client = getClient();
-      const data = await client.post("/api/v1/storefrontcatalog/browse", {
-        pageno: args.page,
-        pagesize: args.pageSize,
-      });
+      const data = await client.get(`/api/v1/storefront/catalog/${catalogId}/categorytree`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );
