@@ -14,7 +14,12 @@ import {
   formatBrowseResult,
   formatEntity,
 } from "../utils/tool-helpers.js";
-import { inventoryFieldSchema } from "../utils/browse-helpers.js";
+import {
+  inventoryFieldSchema,
+  resolveFieldPreset,
+  withClientSideFallbackTracked,
+} from "../utils/browse-helpers.js";
+import type { BrowseResponse } from "../types/api.js";
 
 export function registerInventoryTools(server: McpServer) {
   // ── Browse Rental Inventory ─────────────────────────────────────────────
@@ -24,14 +29,35 @@ export function registerInventoryTools(server: McpServer) {
     "Search and browse rental inventory items with filtering, pagination, and sorting. Returns ICode, description, rates, quantities, category, warehouse info.",
     {
       ...browseSchema,
+      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
       ...inventoryFieldSchema,
       categoryId: z.string().optional().describe("Filter by rental category ID"),
     },
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/rentalinventory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
+
+      const { response: data, clientFiltered, unfilteredTotal } =
+        await withClientSideFallbackTracked(
+          (req) => client.post("/api/v1/rentalinventory/browse", req) as Promise<BrowseResponse>,
+          request,
+          args.searchField,
+          args.searchValue,
+          args.searchOperator
+        );
+
+      const resolvedFields: string[] | undefined =
+        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "rentalInventory");
+
+      const baseText = formatBrowseResult(
+        data as any,
+        resolvedFields ? { fields: resolvedFields } : undefined
+      );
+      const suffix = clientFiltered
+        ? `\nShowing ${data.Rows.length} of ${unfilteredTotal} (client-filtered)`
+        : "";
+
+      return { content: [{ type: "text", text: baseText + suffix }] };
     }
   );
 
@@ -162,13 +188,34 @@ export function registerInventoryTools(server: McpServer) {
     "Search serialized/barcoded individual items (physical assets). Find by barcode, serial number, or description.",
     {
       ...browseSchema,
+      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
       ...inventoryFieldSchema,
     },
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/item/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
+
+      const { response: data, clientFiltered, unfilteredTotal } =
+        await withClientSideFallbackTracked(
+          (req) => client.post("/api/v1/item/browse", req) as Promise<BrowseResponse>,
+          request,
+          args.searchField,
+          args.searchValue,
+          args.searchOperator
+        );
+
+      const resolvedFields: string[] | undefined =
+        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "items");
+
+      const baseText = formatBrowseResult(
+        data as any,
+        resolvedFields ? { fields: resolvedFields } : undefined
+      );
+      const suffix = clientFiltered
+        ? `\nShowing ${data.Rows.length} of ${unfilteredTotal} (client-filtered)`
+        : "";
+
+      return { content: [{ type: "text", text: baseText + suffix }] };
     }
   );
 

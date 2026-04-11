@@ -40,6 +40,7 @@ import { registerReportTools } from "./tools/reports.js";
 import { registerSettingsTools } from "./tools/settings.js";
 import { registerAdminTools } from "./tools/admin.js";
 import { registerStorefrontTools } from "./tools/storefront.js";
+import { registerAddressTools } from "./tools/addresses.js";
 import { registerUtilityTools } from "./tools/utilities.js";
 
 const server = new McpServer({
@@ -60,6 +61,7 @@ registerReportTools(server);
 registerSettingsTools(server);
 registerAdminTools(server);
 registerStorefrontTools(server);
+registerAddressTools(server);
 registerUtilityTools(server);
 
 // Start the server
