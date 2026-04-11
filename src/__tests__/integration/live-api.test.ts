@@ -11,6 +11,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { getClient, resetClient, RentalWorksClient } from "../../utils/api-client.js";
 import type { BrowseResponse, JwtResponse } from "../../types/api.js";
+import { RENTAL_INVENTORY_BRIEF_FIELDS, projectFields, withClientSideFallbackTracked } from "../../utils/browse-helpers.js";
+import { formatBrowseResult } from "../../utils/tool-helpers.js";
 
 const isLiveEnv = !!process.env.RENTALWORKS_BASE_URL;
 
@@ -186,5 +188,111 @@ describe.skipIf(!isLiveEnv)("Live API Integration Tests", () => {
       const record = await client.getById<Record<string, unknown>>("address", id);
       expect(record).toHaveProperty("AddressId");
     }, 10000);
+  });
+
+  // -- v1.1 BROWSE ENHANCEMENTS --
+
+  describe("v1.1 Browse Enhancements", () => {
+    it("explicit fields array returns only those fields per row", async () => {
+      const result = await client.post<BrowseResponse>("/api/v1/rentalinventory/browse", {
+        pageno: 1,
+        pagesize: 5,
+        orderby: "",
+        orderbydirection: "asc",
+      });
+
+      const projected = projectFields(result.Rows as Record<string, unknown>[], ["InventoryId", "Description"]);
+
+      expect(projected.length).toBeGreaterThan(0);
+      for (const row of projected) {
+        const keys = Object.keys(row);
+        expect(keys.length).toBe(2);
+        expect(row).toHaveProperty("InventoryId");
+        expect(row).toHaveProperty("Description");
+        expect(row).not.toHaveProperty("ICode");
+        expect(row).not.toHaveProperty("DailyRate");
+      }
+    }, 15000);
+
+    it("default BRIEF_FIELDS projection produces compact rows", async () => {
+      const result = await client.post<BrowseResponse>("/api/v1/rentalinventory/browse", {
+        pageno: 1,
+        pagesize: 10,
+        orderby: "",
+        orderbydirection: "asc",
+      });
+
+      const originalRows = result.Rows as Record<string, unknown>[];
+      const projected = projectFields(originalRows, RENTAL_INVENTORY_BRIEF_FIELDS);
+
+      expect(projected.length).toBeGreaterThan(0);
+      for (const row of projected) {
+        const keys = Object.keys(row);
+        expect(keys.every((k) => RENTAL_INVENTORY_BRIEF_FIELDS.includes(k))).toBe(true);
+      }
+
+      // Projected rows should have fewer keys than originals (if originals have more fields)
+      if (originalRows.length > 0 && Object.keys(originalRows[0]).length > RENTAL_INVENTORY_BRIEF_FIELDS.length) {
+        expect(Object.keys(projected[0]).length).toBeLessThan(Object.keys(originalRows[0]).length);
+      }
+    }, 15000);
+
+    it("default browse returns at most 10 items and response under 3,000 chars", async () => {
+      const result = await client.post<BrowseResponse>("/api/v1/rentalinventory/browse", {
+        pageno: 1,
+        pagesize: 10,
+        orderby: "",
+        orderbydirection: "asc",
+      });
+
+      const projectedRows = projectFields(result.Rows as Record<string, unknown>[], RENTAL_INVENTORY_BRIEF_FIELDS);
+
+      const formattedText = formatBrowseResult(
+        { ...result, Rows: projectedRows },
+        { fields: RENTAL_INVENTORY_BRIEF_FIELDS }
+      );
+
+      expect(result.Rows.length).toBeLessThanOrEqual(10);
+      expect(formattedText.length).toBeLessThan(3000);
+    }, 15000);
+
+    it("client-side fallback handles Invalid column name gracefully", async () => {
+      const request = {
+        pageno: 1,
+        pagesize: 25,
+        orderby: "",
+        orderbydirection: "asc",
+        searchfields: ["masterid"],
+        searchfieldvalues: ["test"],
+        searchfieldoperators: ["like"],
+        searchseparators: [""],
+      };
+
+      const result = await withClientSideFallbackTracked(
+        (req) => client.post<BrowseResponse>("/api/v1/rentalinventory/browse", req) as Promise<BrowseResponse>,
+        request,
+        "Description",
+        "test",
+        "like"
+      );
+
+      expect(result.clientFiltered).toBe(true);
+      expect(Array.isArray(result.response.Rows)).toBe(true);
+      expect(typeof result.unfilteredTotal).toBe("number");
+      expect(result.unfilteredTotal).toBeGreaterThanOrEqual(result.response.Rows.length);
+
+      if (result.response.Rows.length > 0) {
+        for (const row of result.response.Rows) {
+          const desc = row["Description"] as string;
+          expect(desc.toLowerCase()).toContain("test");
+        }
+      }
+    }, 15000);
+  });
+});
+
+describe("Integration Skip Guard", () => {
+  it("isLiveEnv reflects RENTALWORKS_BASE_URL presence", () => {
+    expect(isLiveEnv).toBe(!!process.env.RENTALWORKS_BASE_URL);
   });
 });
