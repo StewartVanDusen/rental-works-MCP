@@ -49,19 +49,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FSEL-01 | — | Pending |
-| FSEL-02 | — | Pending |
-| FSEL-03 | — | Pending |
-| CFLT-01 | — | Pending |
-| CFLT-02 | — | Pending |
-| CFLT-03 | — | Pending |
-| ROPT-01 | — | Pending |
+| FSEL-01 | Phase 8 | Pending |
+| FSEL-02 | Phase 8 | Pending |
+| FSEL-03 | Phase 9 | Pending |
+| CFLT-01 | Phase 7 | Pending |
+| CFLT-02 | Phase 7 | Pending |
+| CFLT-03 | Phase 9 | Pending |
+| ROPT-01 | Phase 9 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 7 total
-- Mapped to phases: 0
-- Unmapped: 7 ⚠️
+- Mapped to phases: 7
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-11*
-*Last updated: 2026-04-11 after initial definition*
+*Last updated: 2026-04-11 — traceability filled in after roadmap creation*

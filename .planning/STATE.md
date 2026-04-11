@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.1
 milestone_name: Inventory Browse Fix
-status: defining-requirements
+status: roadmap-ready
 stopped_at: null
 last_updated: "2026-04-11"
 last_activity: 2026-04-11
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,14 +21,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Every MCP tool must call the correct API endpoint with the correct method, path, and request body — verified by tests and validated against the live Swagger spec.
-**Current focus:** Defining requirements for v1.1 Inventory Browse Fix
+**Current focus:** v1.1 Inventory Browse Fix — Phase 7 (Browse Utilities) is next
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: Phase 7 — Browse Utilities (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-04-11 — Milestone v1.1 started
+Status: Roadmap approved, ready to plan Phase 7
+Last activity: 2026-04-11 — Roadmap created for v1.1
+
+```
+Progress: [░░░░░░░░░░] 0% (0/4 phases)
+```
 
 ## Accumulated Context
 
@@ -40,10 +44,15 @@ Last activity: 2026-04-11 — Milestone v1.1 started
 - [Phase 02-02]: sync_to_quickbooks bug fixed: URL /entity/id/synctoqbo -> /entity/synctoqbo (spec-correct), entityId sent in body
 - [Phase 02-02]: swagger-spec.test.ts confirms all 114 tool paths match Swagger spec — zero genuine path mismatches beyond sync_to_quickbooks
 - [v1.1]: RW API server-side bugs (masterid, rentalitemid column refs) make server-side filtering impossible for inventory/item browse — must filter client-side in MCP layer
+- [v1.1 roadmap]: browseSchema must NOT be modified — new fields/clientFilter params go in inventory tool definitions only via a separate spread schema
+- [v1.1 roadmap]: withClientSideFallback is a separate inner wrapper from withErrorHandling — do not collapse them; they serve different contracts
+- [v1.1 roadmap]: formatBrowseResult extension uses optional second parameter only — existing callers unaffected; apply projectFields on data.Rows before passing to formatter
+- [v1.1 roadmap]: browse-helpers.ts has zero MCP SDK dependency — pure TypeScript utility, trivially unit-testable with mock data
 
 ### Pending Todos
 
-None yet.
+- Verify RENTAL_INVENTORY_BRIEF_FIELDS and ITEMS_BRIEF_FIELDS constants against live API browse response before hardcoding (field names in API responses may differ from TypeScript type definitions)
+- Update CLAUDE.md Zod version documentation (documents 3.x, installed is 4.3.6)
 
 ### Blockers/Concerns
 
@@ -53,5 +62,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-04-11
-Stopped at: Milestone v1.1 initialization
+Stopped at: Roadmap created — Phase 7 ready to plan
 Resume file: None

@@ -12,12 +12,21 @@ This milestone hardens an existing 114-tool MCP server from "works on my machine
 
 Decimal phases appear between their surrounding integers in numeric order.
 
+### v1.0 — Production Readiness
+
 - [ ] **Phase 1: Foundation** - Fix missing `zod` dep, reorganize test structure, configure Vitest projects
 - [x] **Phase 2: Swagger Validation** - Build spec-loading machinery and produce a path-mismatch report across all 114 tools (completed 2026-04-10)
 - [ ] **Phase 3: Unit Tests and Path Fixes** - Fix all discovered broken paths and write complete unit tests for every tool
 - [ ] **Phase 4: Error Handling** - Prove auth failures, 500 wrapping, and malformed responses via targeted tests
 - [ ] **Phase 5: Integration Tests** - Read-only live API smoke tests confirming reality against the actual instance
 - [ ] **Phase 6: Expansion** - Add high-value missing endpoints after all existing tools are validated
+
+### v1.1 — Inventory Browse Fix
+
+- [ ] **Phase 7: Browse Utilities** - New browse-helpers.ts with client-side filter and fallback logic, fully unit-tested
+- [ ] **Phase 8: Schema and Formatter Extension** - Add optional fields/clientFilter params to inventory tool schemas; extend formatBrowseResult with field projection
+- [ ] **Phase 9: Inventory Handler Wiring** - Wire helpers into inventory browse handlers with BRIEF_FIELDS defaults, smaller page size, and corrected pagination metadata
+- [ ] **Phase 10: Integration Verification** - Read-only live API tests confirming field selection, client-side fallback, and default behavior against real inventory data
 
 ## Phase Details
 
@@ -106,17 +115,66 @@ Plans:
 - [x] 06-01-PLAN.md — Create address CRUD tools and change_order_status utility tool
 - [x] 06-02-PLAN.md — Unit tests and integration smoke tests for all new tools
 
+### Phase 7: Browse Utilities
+**Goal**: Pure utility functions for client-side filtering and graceful API fallback exist in a standalone module, fully tested with no MCP SDK dependency
+**Depends on**: Phase 6
+**Requirements**: CFLT-01, CFLT-02
+**Success Criteria** (what must be TRUE):
+  1. `src/utils/browse-helpers.ts` exists and exports `applyClientFilter`, `withClientSideFallback`, `RENTAL_INVENTORY_BRIEF_FIELDS`, and `ITEMS_BRIEF_FIELDS` with no import from `@modelcontextprotocol/sdk`
+  2. `applyClientFilter` correctly applies all six operators (`like`, `contains`, `startswith`, `endswith`, `=`, `<>`) against in-memory row arrays, verified by unit tests using mock data
+  3. `withClientSideFallback` detects an "Invalid column name" 500 error, retries the fetch without server-side search fields, and applies `applyClientFilter` to the retry results — verified by unit tests with a mock API client
+  4. Unit tests for `browse-helpers.ts` pass with `vitest --project unit` and require no network access or environment variables
+**Plans**: TBD
+
+### Phase 8: Schema and Formatter Extension
+**Goal**: Inventory browse tools accept optional `fields` and `clientFilter` parameters and `formatBrowseResult` can project a subset of fields — all changes backward-compatible, existing 114 tools unaffected
+**Depends on**: Phase 7
+**Requirements**: FSEL-01, FSEL-02
+**Success Criteria** (what must be TRUE):
+  1. Passing `fields: ["InventoryId", "Description"]` to an inventory browse tool returns rows containing only those two fields
+  2. Passing `fieldPreset: "summary"` returns the curated `RENTAL_INVENTORY_BRIEF_FIELDS` set without the caller knowing individual field names
+  3. All existing unit tests for non-inventory tools pass without modification after the schema change — `grep "fields" src/utils/tool-helpers.ts` returns nothing (no pollution of shared `browseSchema`)
+  4. `npx tsc --noEmit` passes after changes to `tool-helpers.ts`
+**Plans**: TBD
+**UI hint**: no
+
+### Phase 9: Inventory Handler Wiring
+**Goal**: Inventory browse handlers deliver trimmed, filtered, correctly-paginated responses by default — agents get useful results without knowing internal field names or page sizes
+**Depends on**: Phase 8
+**Requirements**: FSEL-03, CFLT-03, ROPT-01
+**Success Criteria** (what must be TRUE):
+  1. `browse_rental_inventory` and `browse_items` default to page size 10 (down from 25) when no `pageSize` is specified
+  2. A browse call with no `fields` or `fieldPreset` argument returns the `BRIEF_FIELDS` default set (~200 chars/item vs ~2,200 chars previously)
+  3. When client-side filtering is active, the response metadata reads "Showing X of Y (client-filtered)" where X is the filtered count and Y is the unfiltered API total — agents are never given a misleading total
+  4. CRUD tools in `inventory.ts` (get, create, update, delete) are completely unchanged — verified by running the existing unit test suite with zero modifications to CRUD-related tests
+**Plans**: TBD
+
+### Phase 10: Integration Verification
+**Goal**: All v1.1 changes are confirmed to work correctly against the live RentalWorks API instance using read-only requests
+**Depends on**: Phase 9
+**Requirements**: (verification phase — confirms FSEL-01 through ROPT-01 in production conditions)
+**Success Criteria** (what must be TRUE):
+  1. A `browse_rental_inventory` call with `fields: ["InventoryId", "Description"]` against the live API returns rows with only those two fields and no extra keys
+  2. A browse call that triggers the "Invalid column name" 500 error automatically retries and returns client-filtered results — confirmed by passing a known-broken filter column in the test
+  3. A default (no arguments) `browse_rental_inventory` call returns at most 10 items with the BRIEF_FIELDS shape — total response under 3,000 chars
+  4. Integration tests skip automatically when `RENTALWORKS_BASE_URL` is not set
+**Plans**: TBD
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
-Note: Phase 5 depends on Phase 2 (not Phase 4) — Phases 4 and 5 can run in parallel after Phase 3.
+v1.0: 1 -> 2 -> 3 -> 4 -> 5 -> 6 (Phase 5 depends on Phase 2, not Phase 4)
+v1.1: 7 -> 8 -> 9 -> 10
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/1 | Not started | - |
-| 2. Swagger Validation | 2/2 | Complete   | 2026-04-10 |
+| 2. Swagger Validation | 2/2 | Complete | 2026-04-10 |
 | 3. Unit Tests and Path Fixes | 0/3 | Not started | - |
 | 4. Error Handling | 0/2 | Not started | - |
 | 5. Integration Tests | 0/1 | Not started | - |
 | 6. Expansion | 0/2 | Not started | - |
+| 7. Browse Utilities | 0/? | Not started | - |
+| 8. Schema and Formatter Extension | 0/? | Not started | - |
+| 9. Inventory Handler Wiring | 0/? | Not started | - |
+| 10. Integration Verification | 0/? | Not started | - |
