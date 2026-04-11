@@ -176,6 +176,18 @@ export function applyClientFilter(
 // ── withClientSideFallback ─────────────────────────────────────────────────────
 
 /**
+ * Result type for withClientSideFallbackTracked — includes metadata about
+ * whether client-side filtering was applied and the pre-filter total row count.
+ */
+export type ClientSideFallbackResult<
+  T extends Record<string, unknown> = Record<string, unknown>
+> = {
+  response: BrowseResponse<T>;
+  clientFiltered: boolean;
+  unfilteredTotal: number;
+};
+
+/**
  * Execute a browse fetch, falling back to client-side filtering if the API
  * returns an "Invalid column name" error (a known RentalWorks DB bug on some
  * browse endpoints like rentalinventory and item).
@@ -242,5 +254,75 @@ export async function withClientSideFallback<
     }
 
     return retryResult;
+  }
+}
+
+
+// ── withClientSideFallbackTracked ──────────────────────────────────────────────
+
+/**
+ * Like withClientSideFallback, but returns a ClientSideFallbackResult that
+ * includes metadata about whether client-side filtering was applied and the
+ * pre-filter total row count. Use this when callers need to surface
+ * "Showing X of Y (client-filtered)" information to the end user.
+ *
+ * @param fetchFn - Async function that accepts a request object and returns a BrowseResponse
+ * @param request - The browse request object (may contain searchfields, etc.)
+ * @param searchField - Optional field name for client-side filtering on fallback
+ * @param searchValue - Optional value for client-side filtering on fallback
+ * @param searchOperator - Optional operator for client-side filtering (default: "like")
+ * @returns ClientSideFallbackResult with response, clientFiltered flag, and unfilteredTotal
+ */
+export async function withClientSideFallbackTracked<
+  T extends Record<string, unknown> = Record<string, unknown>
+>(
+  fetchFn: (request: Record<string, unknown>) => Promise<BrowseResponse<T>>,
+  request: Record<string, unknown>,
+  searchField?: string,
+  searchValue?: string,
+  searchOperator?: string
+): Promise<ClientSideFallbackResult<T>> {
+  try {
+    const response = await fetchFn(request);
+    return { response, clientFiltered: false, unfilteredTotal: response.TotalRows };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+
+    if (!message.includes("Invalid column name")) {
+      throw err;
+    }
+
+    // Strip server-side search fields and retry
+    const strippedRequest = { ...request };
+    delete strippedRequest.searchfields;
+    delete strippedRequest.searchfieldvalues;
+    delete strippedRequest.searchfieldoperators;
+    delete strippedRequest.searchseparators;
+
+    const retryResult = await fetchFn(strippedRequest);
+    const unfilteredTotal = retryResult.TotalRows;
+
+    // Apply client-side filter if search params were provided
+    if (searchField && searchValue) {
+      const operator = searchOperator ?? "like";
+      const filteredRows = applyClientFilter(
+        retryResult.Rows as Record<string, unknown>[],
+        searchField,
+        searchValue,
+        operator
+      ) as T[];
+
+      return {
+        response: {
+          ...retryResult,
+          Rows: filteredRows,
+          TotalRows: filteredRows.length,
+        },
+        clientFiltered: true,
+        unfilteredTotal,
+      };
+    }
+
+    return { response: retryResult, clientFiltered: false, unfilteredTotal };
   }
 }
