@@ -5,10 +5,12 @@
 import type {
   BrowseRequest,
   BrowseResponse,
+  ColumnHeader,
   HttpMethod,
   JwtRequest,
   JwtResponse,
 } from "../types/api.js";
+import { withClientSideFallback } from "./browse-helpers.js";
 
 const BASE_URL =
   process.env.RENTALWORKS_BASE_URL ||
@@ -90,6 +92,31 @@ export class RentalWorksClient {
     });
 
     if (!res.ok) {
+      // 401/403: clear token, re-authenticate, retry once
+      if (res.status === 401 || res.status === 403) {
+        this.token = null;
+        this.tokenExpiry = 0;
+        const retryToken = await this.ensureAuth();
+        headers.Authorization = `Bearer ${retryToken}`;
+        const retryRes = await fetch(url, {
+          method,
+          headers,
+          body: body ? JSON.stringify(body) : undefined,
+        });
+        if (!retryRes.ok) {
+          const retryText = await retryRes.text();
+          throw new Error(`API ${method} ${path} failed: ${retryRes.status} - ${retryText}`);
+        }
+        const retryText = await retryRes.text();
+        if (!retryText) return {} as T;
+        try {
+          return JSON.parse(retryText) as T;
+        } catch {
+          throw new Error(
+            `API ${method} ${path} failed: retry response was not valid JSON. Received: ${retryText.slice(0, 200)}`
+          );
+        }
+      }
       const text = await res.text();
       throw new Error(`API ${method} ${path} failed: ${res.status} - ${text}`);
     }
@@ -97,7 +124,13 @@ export class RentalWorksClient {
     // Some endpoints return empty responses
     const text = await res.text();
     if (!text) return {} as T;
-    return JSON.parse(text) as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      throw new Error(
+        `API ${method} ${path} failed: response was not valid JSON. Received: ${text.slice(0, 200)}`
+      );
+    }
   }
 
   /**
@@ -129,10 +162,58 @@ export class RentalWorksClient {
   }
 
   /**
+   * Normalize a browse response so that Rows are always keyed objects.
+   *
+   * Some RentalWorks entities (e.g. order, customer, deal) return Rows as
+   * arrays of values alongside a ColumnHeaders array that provides the field
+   * names. This method zips them together so every row becomes a
+   * Record<string, unknown> keyed by the DataField from each column header.
+   *
+   * If Rows[0] is already an object (or Rows is empty / ColumnHeaders is
+   * absent) the response is returned unchanged.
+   */
+  private normalizeRows<T = Record<string, unknown>>(
+    response: BrowseResponse<T>
+  ): BrowseResponse<T> {
+    const { Rows } = response;
+    if (!Rows || Rows.length === 0 || !Array.isArray(Rows[0])) {
+      return response;
+    }
+
+    // The RW API returns column metadata as either "Columns" (common) or
+    // "ColumnHeaders" depending on the endpoint.  Both carry a DataField
+    // property we can use to zip arrays into keyed objects.
+    const columns: ColumnHeader[] | undefined =
+      (response as unknown as Record<string, unknown>).Columns as ColumnHeader[] | undefined ??
+      response.ColumnHeaders;
+
+    if (!columns || columns.length === 0) {
+      return response;
+    }
+
+    const fields = columns.map((h) => h.DataField);
+    const normalizedRows = (Rows as unknown as unknown[][]).map((row) => {
+      const obj: Record<string, unknown> = {};
+      fields.forEach((field, i) => {
+        obj[field] = row[i];
+      });
+      return obj as T;
+    });
+
+    return { ...response, Rows: normalizedRows };
+  }
+
+  /**
    * Browse an entity with pagination and filtering.
    * Most RentalWorks entities follow the pattern: POST /api/v1/{entity}/browse
+   *
+   * Handles two known RentalWorks API quirks automatically:
+   *   1. "Invalid column name" 500 errors — retries without search fields and
+   *      falls back to client-side filtering (via withClientSideFallback).
+   *   2. Array-valued rows — normalizes them to keyed objects using the
+   *      ColumnHeaders metadata returned by the API.
    */
-  async browse<T = Record<string, unknown>>(
+  async browse<T extends Record<string, unknown> = Record<string, unknown>>(
     entity: string,
     options?: Partial<BrowseRequest>
   ): Promise<BrowseResponse<T>> {
@@ -143,7 +224,45 @@ export class RentalWorksClient {
       orderbydirection: "asc",
       ...options,
     };
-    return this.post<BrowseResponse<T>>(`/api/v1/${entity}/browse`, body);
+
+    const fetchFn = (req: Record<string, unknown>) =>
+      this.post<BrowseResponse<T>>(`/api/v1/${entity}/browse`, req);
+
+    let result: BrowseResponse<T>;
+    try {
+      result = await withClientSideFallback<T>(
+        fetchFn as (req: Record<string, unknown>) => Promise<BrowseResponse<T>>,
+        body as unknown as Record<string, unknown>
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes("Invalid column name")) {
+        throw err;
+      }
+      // POST browse is fundamentally broken for this entity — fall back to GET
+      const params = new URLSearchParams();
+      params.set("pageno", String(body.pageno ?? 1));
+      params.set("pagesize", String(body.pagesize ?? 25));
+      if (body.orderby) {
+        const dir = body.orderbydirection || "asc";
+        params.set("sort", `${body.orderby}${dir === "desc" ? " desc" : ""}`);
+      }
+      const raw = await this.get<{
+        Items: T[];
+        TotalItems: number;
+        PageNo: number;
+        PageSize: number;
+      }>(`/api/v1/${entity}?${params.toString()}`);
+      return {
+        Rows: raw.Items,
+        TotalRows: raw.TotalItems,
+        PageNo: raw.PageNo,
+        PageSize: raw.PageSize,
+        TotalPages: Math.ceil(raw.TotalItems / raw.PageSize),
+      };
+    }
+
+    return this.normalizeRows(result);
   }
 
   /**

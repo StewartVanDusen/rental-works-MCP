@@ -14,6 +14,10 @@ import {
   formatBrowseResult,
   formatEntity,
 } from "../utils/tool-helpers.js";
+import {
+  inventoryFieldSchema,
+  resolveFieldPreset,
+} from "../utils/browse-helpers.js";
 
 export function registerInventoryTools(server: McpServer) {
   // ── Browse Rental Inventory ─────────────────────────────────────────────
@@ -23,13 +27,24 @@ export function registerInventoryTools(server: McpServer) {
     "Search and browse rental inventory items with filtering, pagination, and sorting. Returns ICode, description, rates, quantities, category, warehouse info.",
     {
       ...browseSchema,
+      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
+      ...inventoryFieldSchema,
       categoryId: z.string().optional().describe("Filter by rental category ID"),
     },
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/rentalinventory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
+      const data = await client.browse("rentalinventory", request);
+
+      const resolvedFields: string[] | undefined =
+        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "rentalInventory");
+
+      return {
+        content: [{
+          type: "text",
+          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
+        }],
+      };
     }
   );
 
@@ -158,12 +173,25 @@ export function registerInventoryTools(server: McpServer) {
   server.tool(
     "browse_items",
     "Search serialized/barcoded individual items (physical assets). Find by barcode, serial number, or description.",
-    browseSchema,
+    {
+      ...browseSchema,
+      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
+      ...inventoryFieldSchema,
+    },
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/item/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
+      const data = await client.browse("item", request);
+
+      const resolvedFields: string[] | undefined =
+        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "items");
+
+      return {
+        content: [{
+          type: "text",
+          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
+        }],
+      };
     }
   );
 
