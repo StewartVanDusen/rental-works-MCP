@@ -4,6 +4,8 @@
 
 import { z } from "zod";
 import { projectFields } from "./browse-helpers.js";
+import type { RentalWorksClient } from "./api-client.js";
+import type { BrowseResponse } from "../types/api.js";
 
 /**
  * Common browse input schema fields used by most browse endpoints
@@ -141,6 +143,52 @@ export function formatEntity(data: Record<string, unknown>): string {
     }
   }
   return lines.join("\n");
+}
+
+/**
+ * Browse an entity with automatic GET fallback for broken POST /browse endpoints.
+ *
+ * Some RentalWorks entities (rentalinventory, address) return 500 "Invalid
+ * column name" on ALL POST /browse requests due to a server-side DB bug.
+ * This helper tries POST first, then falls back to GET /api/v1/{entity}
+ * which returns a different response shape ({ Items, TotalItems, ... }) and
+ * normalizes it to the standard BrowseResponse format.
+ */
+export async function browseWithFallback(
+  client: RentalWorksClient,
+  entity: string,
+  request: Record<string, unknown>
+): Promise<BrowseResponse> {
+  try {
+    return await client.post<BrowseResponse>(`/api/v1/${entity}/browse`, request);
+  } catch (err) {
+    if (!(err instanceof Error) || !err.message.includes("Invalid column name")) {
+      throw err;
+    }
+    // POST browse is broken for this entity — fall back to GET
+    const params = new URLSearchParams();
+    if (request.pageno) params.set("pageno", String(request.pageno));
+    if (request.pagesize) params.set("pagesize", String(request.pagesize));
+    if (request.orderby) {
+      const dir = request.orderbydirection || "asc";
+      params.set("sort", `${request.orderby}${dir === "desc" ? " desc" : ""}`);
+    }
+    const qs = params.toString();
+    const path = `/api/v1/${entity}${qs ? `?${qs}` : ""}`;
+    const raw = await client.get<{
+      Items: Record<string, unknown>[];
+      TotalItems: number;
+      PageNo: number;
+      PageSize: number;
+    }>(path);
+    return {
+      Rows: raw.Items,
+      TotalRows: raw.TotalItems,
+      PageNo: raw.PageNo,
+      PageSize: raw.PageSize,
+      TotalPages: Math.ceil(raw.TotalItems / raw.PageSize),
+    };
+  }
 }
 
 type ToolResult = {

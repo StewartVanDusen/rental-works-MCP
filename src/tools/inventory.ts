@@ -17,9 +17,7 @@ import {
 import {
   inventoryFieldSchema,
   resolveFieldPreset,
-  withClientSideFallbackTracked,
 } from "../utils/browse-helpers.js";
-import type { BrowseResponse } from "../types/api.js";
 
 export function registerInventoryTools(server: McpServer) {
   // ── Browse Rental Inventory ─────────────────────────────────────────────
@@ -36,28 +34,17 @@ export function registerInventoryTools(server: McpServer) {
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-
-      const { response: data, clientFiltered, unfilteredTotal } =
-        await withClientSideFallbackTracked(
-          (req) => client.post("/api/v1/rentalinventory/browse", req) as Promise<BrowseResponse>,
-          request,
-          args.searchField,
-          args.searchValue,
-          args.searchOperator
-        );
+      const data = await client.browse("rentalinventory", request);
 
       const resolvedFields: string[] | undefined =
         args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "rentalInventory");
 
-      const baseText = formatBrowseResult(
-        data as any,
-        resolvedFields ? { fields: resolvedFields } : undefined
-      );
-      const suffix = clientFiltered
-        ? `\nShowing ${data.Rows.length} of ${unfilteredTotal} (client-filtered)`
-        : "";
-
-      return { content: [{ type: "text", text: baseText + suffix }] };
+      return {
+        content: [{
+          type: "text",
+          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
+        }],
+      };
     }
   );
 
@@ -194,28 +181,17 @@ export function registerInventoryTools(server: McpServer) {
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-
-      const { response: data, clientFiltered, unfilteredTotal } =
-        await withClientSideFallbackTracked(
-          (req) => client.post("/api/v1/item/browse", req) as Promise<BrowseResponse>,
-          request,
-          args.searchField,
-          args.searchValue,
-          args.searchOperator
-        );
+      const data = await client.browse("item", request);
 
       const resolvedFields: string[] | undefined =
         args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "items");
 
-      const baseText = formatBrowseResult(
-        data as any,
-        resolvedFields ? { fields: resolvedFields } : undefined
-      );
-      const suffix = clientFiltered
-        ? `\nShowing ${data.Rows.length} of ${unfilteredTotal} (client-filtered)`
-        : "";
-
-      return { content: [{ type: "text", text: baseText + suffix }] };
+      return {
+        content: [{
+          type: "text",
+          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
+        }],
+      };
     }
   );
 

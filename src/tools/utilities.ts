@@ -105,7 +105,7 @@ export function registerUtilityTools(server: McpServer) {
     async ({ entity, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post(`/api/v1/${entity}/browse`, request);
+      const data = await client.browse(entity, request);
       return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
     }
   );
