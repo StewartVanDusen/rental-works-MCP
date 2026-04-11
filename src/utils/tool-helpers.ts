@@ -3,6 +3,7 @@
  */
 
 import { z } from "zod";
+import { projectFields } from "./browse-helpers.js";
 
 /**
  * Common browse input schema fields used by most browse endpoints
@@ -92,22 +93,31 @@ export function buildBrowseRequest(args: {
 }
 
 /**
- * Format a browse response into a readable text summary
+ * Format a browse response into a readable text summary.
+ * Optionally projects rows to include only specified fields.
  */
-export function formatBrowseResult(data: {
-  TotalRows: number;
-  PageNo: number;
-  PageSize: number;
-  TotalPages: number;
-  Rows: Record<string, unknown>[];
-}): string {
+export function formatBrowseResult(
+  data: {
+    TotalRows: number;
+    PageNo: number;
+    PageSize: number;
+    TotalPages: number;
+    Rows: Record<string, unknown>[];
+  },
+  options?: { fields?: string[] }
+): string {
+  const rows =
+    options?.fields && options.fields.length > 0
+      ? projectFields(data.Rows, options.fields)
+      : data.Rows;
+
   const lines: string[] = [
     `Results: ${data.TotalRows} total (page ${data.PageNo} of ${data.TotalPages})`,
-    `Showing ${data.Rows.length} records:`,
+    `Showing ${rows.length} records:`,
     "",
   ];
 
-  for (const row of data.Rows) {
+  for (const row of rows) {
     const parts: string[] = [];
     for (const [key, value] of Object.entries(row)) {
       if (value !== null && value !== undefined && value !== "") {

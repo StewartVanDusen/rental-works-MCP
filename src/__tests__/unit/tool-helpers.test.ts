@@ -59,6 +59,51 @@ describe("formatBrowseResult", () => {
     expect(result).toContain("ICode: LAMP02 | Description: Halogen");
     expect(result).not.toContain("Notes");
   });
+
+  it("formats browse data with field projection", () => {
+    const result = formatBrowseResult(
+      {
+        TotalRows: 2,
+        PageNo: 1,
+        PageSize: 25,
+        TotalPages: 1,
+        Rows: [
+          { ICode: "LAMP01", Description: "LED Lamp", ExtraField: "hidden" },
+          { ICode: "LAMP02", Description: "Halogen", ExtraField: "hidden" },
+        ],
+      },
+      { fields: ["ICode", "Description"] }
+    );
+    expect(result).toContain("ICode: LAMP01 | Description: LED Lamp");
+    expect(result).toContain("ICode: LAMP02 | Description: Halogen");
+    expect(result).not.toContain("ExtraField");
+    expect(result).not.toContain("hidden");
+  });
+
+  it("formats browse data without projection when options is undefined", () => {
+    const result = formatBrowseResult({
+      TotalRows: 1,
+      PageNo: 1,
+      PageSize: 25,
+      TotalPages: 1,
+      Rows: [{ ICode: "LAMP01", Description: "LED Lamp", Extra: "visible" }],
+    });
+    expect(result).toContain("Extra: visible");
+  });
+
+  it("formats browse data without projection when fields is empty array", () => {
+    const result = formatBrowseResult(
+      {
+        TotalRows: 1,
+        PageNo: 1,
+        PageSize: 25,
+        TotalPages: 1,
+        Rows: [{ ICode: "LAMP01", Description: "LED Lamp", Extra: "visible" }],
+      },
+      { fields: [] }
+    );
+    expect(result).toContain("Extra: visible");
+  });
 });
 
 describe("formatEntity", () => {

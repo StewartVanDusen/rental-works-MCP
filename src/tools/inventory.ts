@@ -14,6 +14,7 @@ import {
   formatBrowseResult,
   formatEntity,
 } from "../utils/tool-helpers.js";
+import { inventoryFieldSchema } from "../utils/browse-helpers.js";
 
 export function registerInventoryTools(server: McpServer) {
   // ── Browse Rental Inventory ─────────────────────────────────────────────
@@ -23,6 +24,7 @@ export function registerInventoryTools(server: McpServer) {
     "Search and browse rental inventory items with filtering, pagination, and sorting. Returns ICode, description, rates, quantities, category, warehouse info.",
     {
       ...browseSchema,
+      ...inventoryFieldSchema,
       categoryId: z.string().optional().describe("Filter by rental category ID"),
     },
     async (args) => {
@@ -158,7 +160,10 @@ export function registerInventoryTools(server: McpServer) {
   server.tool(
     "browse_items",
     "Search serialized/barcoded individual items (physical assets). Find by barcode, serial number, or description.",
-    browseSchema,
+    {
+      ...browseSchema,
+      ...inventoryFieldSchema,
+    },
     async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
