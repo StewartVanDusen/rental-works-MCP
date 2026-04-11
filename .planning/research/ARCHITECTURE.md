@@ -1,369 +1,374 @@
-# Architecture Patterns: MCP Server Production Test Suite
+# Architecture Research
 
-**Domain:** MCP server test hardening — API path validation, integration test isolation, Swagger spec validation
-**Researched:** 2026-04-09
-**Overall confidence:** HIGH for test organization patterns; MEDIUM for Swagger validation approach (spec is split across 12 sub-specs, needs live discovery)
+**Domain:** MCP server layer — client-side filtering, field projection, and error fallback
+**Researched:** 2026-04-11
+**Confidence:** HIGH (based on direct code inspection of existing architecture)
 
----
+## Standard Architecture
 
-## Current Architecture Assessment
+### System Overview — Current State
 
-The existing codebase has a solid foundation with one critical gap.
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MCP Tool Handlers                            │
+│  (src/tools/inventory.ts, orders.ts, ...)                        │
+│                                                                  │
+│  server.tool("browse_rental_inventory", browseSchema, async(args)│
+│    → buildBrowseRequest(args)                                    │
+│    → client.post("/api/v1/rentalinventory/browse", request)      │
+│    → formatBrowseResult(data)   ← dumps ALL non-null fields      │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │ uses
+┌─────────────────────────▼───────────────────────────────────────┐
+│                     tool-helpers.ts                              │
+│  browseSchema          — shared Zod schema (page/search/sort)   │
+│  buildBrowseRequest()  — schema args → API request body          │
+│  formatBrowseResult()  — raw API response → text string          │
+│  formatEntity()        — single record → text string             │
+│  withErrorHandling()   — wraps handlers, maps known errors       │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │ calls
+┌─────────────────────────▼───────────────────────────────────────┐
+│                     api-client.ts                                │
+│  RentalWorksClient (singleton)                                   │
+│  request(), get(), post(), put(), delete()                       │
+│  browse(), getById(), create(), update(), remove()               │
+│  JWT auth with 3.5h auto-refresh                                 │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │ HTTP
+┌─────────────────────────▼───────────────────────────────────────┐
+│               RentalWorks Cloud API                              │
+│  /api/v1/rentalinventory/browse  (broken: masterid, rentalitemid)│
+│  /api/v1/salesinventory/browse                                   │
+│  /api/v1/item/browse                                             │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**What works well:**
+### System Overview — Target State (v1.1)
 
-- `InMemoryTransport` pattern for full-stack unit tests — correct, standard, keep it
-- `vi.stubGlobal("fetch", ...)` in `beforeEach` with `resetClient()` — correct isolation approach
-- `capturedUrl` / `capturedBody` assertion pattern — simple and effective, keep it
-- `withErrorHandling` wrapper covering known RW server-side quirks
-- Domain-grouped tool files with shared `tool-helpers.ts` utilities
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     MCP Tool Handlers                            │
+│  browse_rental_inventory:                                        │
+│    → buildBrowseRequest(args)                                    │
+│    → withClientSideFallback(                                     │
+│         () => client.post(..., request),                         │
+│         () => client.post(..., requestNoSearch),                 │
+│         args.clientFilter                                        │
+│       )                                                          │
+│    → formatBrowseResult(data, { fields: args.fields             │
+│                                    ?? RENTAL_INVENTORY_BRIEF })  │
+└──────────────────┬──────────────────────┬───────────────────────┘
+                   │                      │
+     ┌─────────────▼──────────┐  ┌────────▼────────────────────┐
+     │   tool-helpers.ts      │  │   browse-helpers.ts (NEW)    │
+     │   (modified)           │  │                              │
+     │                        │  │  applyClientFilter()         │
+     │  browseSchema          │  │  withClientSideFallback()    │
+     │    + fields?  (new)    │  │  RENTAL_INVENTORY_BRIEF      │
+     │    + clientFilter? (new│  │  SALES_INVENTORY_BRIEF       │
+     │                        │  │  ITEMS_BRIEF                 │
+     │  buildBrowseRequest()  │  │                              │
+     │   (unchanged)          │  └─────────────────────────────┘
+     │                        │
+     │  formatBrowseResult()  │
+     │   (add fields? option) │
+     └────────────────────────┘
+```
 
-**The critical gap:**
-
-The current tests manually hardcode expected API paths (e.g. `expect(capturedUrl).toContain("/api/v1/order/cancel/O1")`). This is maintainable for 20 paths but becomes unmanageable at 114+ tools across 12 Swagger sub-specs. The missing layer is a **spec-driven validation step** that catches path drift automatically without requiring humans to compare Swagger docs against test assertions.
-
----
-
-## Recommended Architecture
-
-### Component Map
+## Recommended Project Structure
 
 ```
 src/
-  __tests__/
-    unit/                          ← existing tests, reorganized
-      api-paths.test.ts            ← keep (mock fetch, assert URL/method)
-      request-bodies.test.ts       ← keep (mock fetch, assert body shape)
-      tool-registration.test.ts    ← keep (count, duplicates, schema shape)
-      tool-helpers.test.ts         ← keep (pure function tests, no MCP infra)
-      removed-tools.test.ts        ← keep (regression guard)
-      error-handling.test.ts       ← ADD (auth failures, 500s, malformed JSON)
-
-    integration/                   ← ADD: live API calls, read-only only
-      auth.integration.test.ts     ← JWT acquisition, token refresh logic
-      browse-smoke.integration.test.ts  ← browse 3-5 key entities, assert shape
-      get-by-id.integration.test.ts     ← fetch single known records
-
-    swagger/                       ← ADD: spec-driven validation layer
-      swagger-spec.test.ts         ← parse specs, assert every tool has a matching path
-      swagger-loader.ts            ← utility: fetch and cache all 12 sub-specs
-
-scripts/
-  fetch-swagger.ts                 ← one-time: download all 12 sub-specs to local JSON
-  validate-paths.ts                ← standalone: diff tool paths vs spec paths
+├── tools/
+│   └── inventory.ts           # Modified: browse handlers gain fields + clientFilter
+├── utils/
+│   ├── api-client.ts          # No changes needed
+│   ├── tool-helpers.ts        # Modified: browseSchema + formatBrowseResult
+│   └── browse-helpers.ts      # NEW: applyClientFilter, withClientSideFallback,
+│                              #      default field constant sets
+└── types/
+    └── api.ts                 # No changes expected
 ```
 
-### Component Boundaries
+### Structure Rationale
 
-| Component | Responsibility | Communicates With |
-|-----------|---------------|-------------------|
-| Unit tests (`unit/`) | Assert correct method, path, body via mocked fetch | MCP InMemoryTransport + vi.stubGlobal fetch |
-| Integration tests (`integration/`) | Hit live API to confirm tools work end-to-end | RentalWorksClient directly (not through MCP protocol) |
-| Swagger tests (`swagger/`) | Parse spec, assert tool-registered paths exist in spec | swagger-loader + MCP tool list |
-| swagger-loader | Fetch/cache the 12 sub-spec JSONs from the live instance | Live RW API (`/swagger/v1/swagger.json?urls.primaryName=...`) |
-| scripts/validate-paths | Developer CLI for one-off path audits | swagger-loader, tool source files |
+- **browse-helpers.ts (new):** Isolates the three new concerns (projection, filtering, fallback) from the general-purpose tool-helpers.ts. Keeps tool-helpers.ts minimal and stable. Has zero dependency on MCP SDK — easily unit-tested with mock data, no InMemoryTransport required.
+- **tool-helpers.ts (modified):** Two targeted changes only — extend `browseSchema` with two optional fields, and extend `formatBrowseResult` to accept an options object. All existing callers pass no second argument, so behavior is unchanged.
+- **inventory.ts (modified):** Browse tool handlers pick up `fields` and `clientFilter` from schema args and pass them to the new helpers. CRUD tools (get/create/update/delete) are untouched.
+- **api-client.ts (no changes):** The client layer is responsible for HTTP communication only. Filtering and projection are application concerns that belong above it.
 
----
+## Architectural Patterns
 
-## Data Flow Direction
+### Pattern 1: Schema Extension — Additive, Non-Breaking
 
-### Unit test flow (no network)
-
-```
-Vitest runner
-  → beforeEach: vi.stubGlobal("fetch", mock) + resetClient()
-  → InMemoryTransport: client.callTool(name, args)
-  → tool handler: calls client.request(method, path, body)
-  → stubbed fetch: captures (url, method, body) → returns canned response
-  → assertions on (capturedUrl, capturedMethod, capturedBody)
-```
-
-No network. No env vars required. Runs in CI without credentials.
-
-### Integration test flow (live network, read-only)
-
-```
-Vitest runner (integration project)
-  → beforeAll: requires RENTALWORKS_BASE_URL, _USERNAME, _PASSWORD env vars
-  → calls RentalWorksClient directly (skip MCP layer)
-  → RentalWorksClient.authenticate() → real JWT
-  → RentalWorksClient.browse(entity) or .get(path) → real response
-  → assertions: response shape matches expected schema, TotalRows is number, etc.
-```
-
-Read-only: only `.browse()` and `.get()` / `.getById()` methods. Never `.create()`, `.update()`, `.remove()`. Tests skip if env vars absent.
-
-### Swagger validation flow
-
-```
-Vitest runner (swagger project)
-  → swagger-loader: GET /swagger/v1/swagger.json for each sub-spec name
-  → dereference all $ref pointers (swagger-parser)
-  → build Set<string> of all { method, path } pairs across all 12 specs
-  → InMemoryTransport: client.listTools() → get all 114 registered tool names
-  → for each tool: call with minimal args, capture (capturedMethod, capturedUrl)
-  → assert (method, normalizedPath) exists in spec Set
-```
-
-The "normalized path" step is important: RW paths contain IDs like `/api/v1/order/cancel/O1` which must be matched against spec templates like `/api/v1/order/cancel/{orderId}`. Normalize by replacing UUID/alphanumeric segments with `{param}` before comparison.
-
----
-
-## Swagger Validation Architecture
-
-### Why swagger-parser, not vitest-openapi
-
-`vitest-openapi` validates *responses* against a spec — not useful here. The RW API is the external system; what matters is that the *requests* (method + path) the MCP tools send are valid. The right tool is `@apidevtools/swagger-parser` to parse and dereference the spec, then custom logic to assert path coverage.
-
-**Confidence: HIGH** — swagger-parser is the standard, actively maintained, works with Swagger 2.0 and OpenAPI 3.0. RentalWorks almost certainly serves Swagger 2.0 given its ASP.NET architecture.
-
-### Fetching the 12 sub-specs
-
-Swagger UI's multi-spec endpoint follows the pattern:
-
-```
-GET {BASE_URL}/swagger/v1/swagger.json?urls.primaryName={spec-name}
-```
-
-Where `{spec-name}` values are discoverable by fetching the Swagger UI index:
-
-```
-GET {BASE_URL}/swagger/index.html
-```
-
-And parsing the `SwaggerUIBundle({ urls: [...] })` config embedded in the HTML. The `urls` array contains `{ name, url }` objects for each of the 12 sub-specs.
-
-The `swagger-loader.ts` utility should:
-1. Fetch the Swagger UI HTML
-2. Extract the `urls` array via regex on the embedded script block
-3. Fetch each spec URL
-4. Pass each through `SwaggerParser.dereference()` to resolve all `$ref` pointers
-5. Merge all `paths` objects into one master path set
-6. Cache to `.planning/swagger-cache/` as JSON files (gitignored)
-
-Run the loader once before the swagger tests execute, or run it as a pre-test script for the swagger project.
-
-### Path normalization for matching
-
-The hardest part: tool tests capture concrete paths like `/api/v1/order/cancel/O1` but the spec defines `/api/v1/order/cancel/{orderId}`. Matching strategy:
+**What:** Add two optional fields to the shared `browseSchema` object in tool-helpers.ts.
+**When to use:** For fields that apply to all browse tools equally. Field selection and client-side search both belong at this level since any browse tool could benefit.
+**Trade-offs:** Adding to the shared schema means all browse tools pick these up automatically. This is intentional — field selection should work on customers, orders, vendors, etc., not just inventory. Adding optional-with-no-default fields is strictly backward compatible.
 
 ```typescript
-// Replace any path segment that looks like an ID (alphanumeric, no dots)
-// with a generic {param} token, then match against spec path templates
-function normalizePath(concretePath: string, specPaths: string[]): string | null {
-  // Try exact match first
-  if (specPaths.includes(concretePath)) return concretePath;
+// tool-helpers.ts — extend browseSchema
+export const browseSchema = {
+  // ... existing fields unchanged ...
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe("Return only these fields per row (e.g. ['ICode','Description','DailyRate']). Omit for domain defaults."),
+  clientFilter: z.object({
+    field: z.string().describe("Field name to filter on"),
+    value: z.string().describe("Value to match"),
+    operator: z.enum(["contains", "startswith", "=", "like"]).default("contains"),
+  })
+  .optional()
+  .describe("Client-side filter applied after fetch — use when server-side search returns 500 (broken column)"),
+};
+```
 
-  // Replace ID-like segments and find the best matching spec path
-  for (const specPath of specPaths) {
-    const specSegments = specPath.split("/");
-    const concreteSegments = concretePath.split("?")[0].split("/");
-    if (specSegments.length !== concreteSegments.length) continue;
+### Pattern 2: Field Projection at the Formatter Layer
 
-    const matches = specSegments.every((seg, i) =>
-      seg.startsWith("{") || seg === concreteSegments[i]
-    );
-    if (matches) return specPath;
+**What:** `formatBrowseResult` accepts an optional `fields` array and strips all other keys from each row before building the output string. Projection happens at format time, not at fetch time.
+**When to use:** Whenever a caller wants a compact response. The savings are in what the MCP tool returns to the LLM, not in network traffic — we have no control over what the API includes in its response.
+**Trade-offs:** Fetches the full payload from the API regardless of `fields`. Acceptable because the bottleneck is LLM context length (~2200 chars/row → ~150 chars/row), not network bandwidth.
+
+```typescript
+// tool-helpers.ts — modified formatBrowseResult
+export function formatBrowseResult(
+  data: { TotalRows: number; PageNo: number; PageSize: number; TotalPages: number; Rows: Record<string, unknown>[] },
+  options?: { fields?: string[] }
+): string {
+  const rows = options?.fields
+    ? data.Rows.map(row =>
+        Object.fromEntries(options.fields!.map(f => [f, row[f]]))
+      )
+    : data.Rows;
+  // ... header and row-rendering logic unchanged, operating on `rows` ...
+}
+```
+
+### Pattern 3: Client-Side Filter as a Pre-Format Step
+
+**What:** `applyClientFilter()` in browse-helpers.ts filters `data.Rows` in memory before `formatBrowseResult` is called. It is invoked explicitly in tool handlers that receive a `clientFilter` arg.
+**When to use:** When the caller wants to search by a field that triggers "Invalid column name" 500 errors server-side (e.g. `masterid`, `rentalitemid`). Caller should also set a larger `pageSize` (e.g. 100-500) since filtering only sees the fetched page.
+**Trade-offs:** Requires fetching a larger page to be useful. This trade-off is the caller's responsibility to manage. Document in the tool description string.
+
+```typescript
+// browse-helpers.ts
+export function applyClientFilter(
+  rows: Record<string, unknown>[],
+  filter: { field: string; value: string; operator: string }
+): Record<string, unknown>[] {
+  const { field, value, operator } = filter;
+  const needle = value.toLowerCase();
+  return rows.filter(row => {
+    const cell = String(row[field] ?? "").toLowerCase();
+    if (operator === "contains" || operator === "like") return cell.includes(needle);
+    if (operator === "startswith") return cell.startsWith(needle);
+    if (operator === "=") return cell === needle;
+    return cell.includes(needle);
+  });
+}
+```
+
+### Pattern 4: Error-Fallback Wrapper
+
+**What:** `withClientSideFallback()` wraps a browse call. On "Invalid column name" error AND when `clientFilter` is provided, it retries with a request that has no server-side search fields, then applies `applyClientFilter` locally.
+**When to use:** Wrap the `client.post(...)` call in browse tool handlers for entities known to have broken server-side filter columns. Can also be applied broadly to all browse tools — no-ops on the happy path.
+**Trade-offs:** Two API calls on the failure path (original attempt + retry). Acceptable because the broken 500 path was previously a dead end. Errors not matching "Invalid column name" re-throw and propagate to `withErrorHandling`.
+
+```typescript
+// browse-helpers.ts
+export async function withClientSideFallback(
+  fetchFn: () => Promise<BrowseResponse>,
+  fallbackFetchFn: () => Promise<BrowseResponse>,
+  clientFilter?: { field: string; value: string; operator: string }
+): Promise<BrowseResponse> {
+  try {
+    return await fetchFn();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (clientFilter && msg.includes("Invalid column name")) {
+      const data = await fallbackFetchFn();
+      const filtered = applyClientFilter(data.Rows, clientFilter);
+      return { ...data, Rows: filtered, TotalRows: filtered.length };
+    }
+    throw err; // re-throw for withErrorHandling to catch
   }
-  return null;
 }
 ```
 
-This handles RW's non-REST patterns like `/api/v1/order/cancel/{id}` and `/api/v1/storefront/product/{id}/warehouseid/{wid}/locationid/{lid}/...`.
+**Error layering:** `withClientSideFallback` (inner) must execute before `withErrorHandling` (outer). Inner catches "Invalid column name" and returns real data. Outer catches anything remaining and formats as error text. They serve different contracts: one recovers with data, the other formats failure.
 
----
+### Pattern 5: Curated Default Field Sets
 
-## Integration Test Isolation Pattern
-
-### Why call RentalWorksClient directly (not through MCP)
-
-Integration tests through `InMemoryTransport` add two layers of complexity without benefit: the MCP protocol layer and `withErrorHandling` masking real API errors as success responses. Calling `RentalWorksClient` directly gives cleaner error surfaces and faster feedback.
-
-### Vitest workspace configuration
-
-Use Vitest's `projects` array to create three independently runnable test suites:
+**What:** Named `string[]` constants in browse-helpers.ts representing curated field sets for each inventory entity.
+**When to use:** As the default `fields` value in browse tool handlers when caller omits `fields`. Caller can always override by passing explicit `fields: [...]`.
+**Trade-offs:** Opinionated defaults. Field names must match what the API actually returns — verify against a live browse response before hardcoding.
 
 ```typescript
-// vitest.config.ts
-export default defineConfig({
-  test: {
-    projects: [
-      {
-        test: {
-          name: "unit",
-          root: "src",
-          include: ["__tests__/unit/**/*.test.ts", "__tests__/tool-helpers.test.ts"],
-          environment: "node",
-        },
-      },
-      {
-        test: {
-          name: "integration",
-          root: "src",
-          include: ["__tests__/integration/**/*.integration.test.ts"],
-          environment: "node",
-        },
-      },
-      {
-        test: {
-          name: "swagger",
-          root: "src",
-          include: ["__tests__/swagger/**/*.test.ts"],
-          environment: "node",
-          // Longer timeout: swagger-loader hits network
-          testTimeout: 30_000,
-        },
-      },
-    ],
-  },
-});
+// browse-helpers.ts
+export const RENTAL_INVENTORY_BRIEF_FIELDS = [
+  "InventoryId", "ICode", "Description", "CategoryDescription",
+  "DailyRate", "WeeklyRate", "MonthlyRate",
+  "QuantityOwned", "QuantityAvailable", "WarehouseDescription",
+];
+
+export const ITEMS_BRIEF_FIELDS = [
+  "ItemId", "ICode", "Description", "BarCode", "SerialNumber",
+  "Status", "WarehouseDescription",
+];
 ```
 
-CLI usage:
-- `vitest --project unit` — fast, no credentials, runs in CI
-- `vitest --project integration` — requires env vars, read-only, optional in CI
-- `vitest --project swagger` — requires env vars + network, run on demand or in dedicated CI job
+## Data Flow
 
-### Integration test guard pattern
-
-```typescript
-// At the top of every integration test file
-const SKIP = !process.env.RENTALWORKS_BASE_URL;
-
-describe.skipIf(SKIP)("browse smoke tests", () => {
-  // ...
-});
-```
-
-This makes integration tests silently pass in environments without credentials — no failures in standard CI, no accidental mutation of live data.
-
-### Read-only constraint enforcement
-
-Do not import or expose write methods in integration test files. Use a restricted wrapper:
-
-```typescript
-// src/__tests__/integration/read-only-client.ts
-import { getClient } from "../../utils/api-client.js";
-
-export async function browseEntity(entity: string) {
-  return getClient().browse(entity);
-}
-export async function getEntity(path: string) {
-  return getClient().get(path);
-}
-// No create, update, remove, post methods exported
-```
-
-This is not a technical lock but a clear architectural boundary — a grep for `getClient().create` or `getClient().post` in `integration/` files should never return results.
-
----
-
-## Anti-Patterns to Avoid
-
-### Anti-Pattern 1: Shared MCP server instance across test files
-
-**What goes wrong:** The existing `tool-registration.test.ts` and `api-paths.test.ts` each create a `McpServer` instance in `beforeAll`. If Vitest runs them in parallel (which it does by default), the global fetch stub from one test file can leak into another.
-
-**Why it happens:** `vi.stubGlobal` mutates the global `fetch` — it's process-wide, not file-scoped.
-
-**Instead:** Each test file that stubs `fetch` must call `vi.unstubAllGlobals()` in `afterAll` (already done in api-paths and request-bodies, but verify all files do this). Use `beforeEach`/`afterEach` rather than `beforeAll`/`afterAll` for fetch stubs when possible.
-
-### Anti-Pattern 2: Hardcoded expected-path strings as the only validation
-
-**What goes wrong:** A developer fixes a path in the tool file but forgets to update the test assertion. Both test and implementation are wrong in sync. The Swagger spec is the only ground truth.
-
-**Instead:** The swagger validation layer catches drift automatically. Unit test assertions on specific paths remain as regression guards but are no longer the *only* safety net.
-
-### Anti-Pattern 3: Integration tests that assert exact data values
-
-**What goes wrong:** `expect(result.Rows[0].ICode).toBe("LAMP001")` fails the moment any data changes on the live instance.
-
-**Instead:** Assert shape and type only:
-```typescript
-expect(result.TotalRows).toBeTypeOf("number");
-expect(result.Rows).toBeInstanceOf(Array);
-expect(result.Rows.length).toBeGreaterThanOrEqual(0);
-```
-
-### Anti-Pattern 4: Fetching Swagger spec inside every test run
-
-**What goes wrong:** 12 network calls per test run adds 5-15 seconds. Flaky network = flaky tests.
-
-**Instead:** Cache spec JSON files to `.planning/swagger-cache/`. Run the fetch script manually or in a dedicated CI step. Swagger test suite reads from cache, not live network.
-
----
-
-## Build Order Implications
-
-The three test layers have explicit dependencies that dictate build order:
+### Request Flow — Happy Path (field selection only)
 
 ```
-Phase 1: Reorganize existing unit tests
-  - Move existing 5 test files into src/__tests__/unit/
-  - Update vitest.config.ts to use projects array
-  - Verify: vitest --project unit still passes
-
-Phase 2: Add missing unit test coverage
-  - error-handling.test.ts (auth failures, 500 wrapping, NullReference detection)
-  - Remaining tool paths not yet covered in api-paths.test.ts
-  - Depends on: Phase 1 (organization in place)
-
-Phase 3: Build Swagger validation layer
-  - scripts/fetch-swagger.ts (download and cache all 12 sub-specs)
-  - src/__tests__/swagger/swagger-loader.ts
-  - src/__tests__/swagger/swagger-spec.test.ts
-  - Depends on: Phase 1 (listTools() wiring understood), live RW instance accessible
-  - Note: path normalization logic is the hardest part; budget extra time
-
-Phase 4: Build integration test suite
-  - src/__tests__/integration/read-only-client.ts
-  - auth.integration.test.ts
-  - browse-smoke.integration.test.ts
-  - Depends on: nothing from Phases 2-3, but pairs well with Phase 3 findings
-    (Swagger validation identifies which endpoints to smoke-test)
-
-Phase 5: Bug fixes from validation findings
-  - Run swagger-spec.test.ts, collect all path mismatches
-  - Fix tool files, re-run, iterate
-  - Depends on: Phase 3 complete
+LLM calls browse_rental_inventory
+  { searchValue: "LED PAR", fields: ["ICode","Description","DailyRate"] }
+           |
+buildBrowseRequest(args)
+  → { pageno:1, pagesize:10, searchfields:["Description"], ... }
+           |
+client.post("/api/v1/rentalinventory/browse", request)
+  → { TotalRows:47, Rows:[{InventoryId:..., ICode:..., 80+ fields...}] }
+           |
+formatBrowseResult(data, { fields: ["ICode","Description","DailyRate"] })
+  → strips all but 3 fields per row
+  → "Results: 47 total (page 1 of 5)\nICode: LED-PAR64 | Description:... | DailyRate: 15"
+           |
+MCP returns ~150 chars/row instead of ~2200 chars/row
 ```
 
-Phases 3 and 4 can run in parallel. Phase 5 depends on Phase 3.
+### Request Flow — Fallback Path (broken server-side filter)
 
----
+```
+LLM calls browse_rental_inventory
+  { clientFilter: { field:"masterid", value:"12345", operator:"=" }, pageSize: 200 }
+           |
+buildBrowseRequest(args)  →  requestWithSearch (searchfields: ["masterid"])
+buildBrowseRequest({...args, searchField:undefined})  →  requestNoSearch
+           |
+withClientSideFallback(
+  () => client.post(..., requestWithSearch),    ← attempt 1: 500 "Invalid column name"
+  () => client.post(..., requestNoSearch),      ← attempt 2: returns 200 unfiltered rows
+  { field:"masterid", value:"12345", ... }
+)
+           |
+applyClientFilter(data.Rows, filter)
+  → filters 200 rows to those where masterid = "12345"
+           |
+formatBrowseResult(filteredData, { fields: RENTAL_INVENTORY_BRIEF_FIELDS })
+```
 
-## Technology Decisions
+### Key Data Flows
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Spec parsing | `@apidevtools/swagger-parser` | Standard, actively maintained, handles Swagger 2.0 + OpenAPI 3.0, TypeScript-typed, dereferences $ref automatically |
-| Test separation | Vitest `projects` array | First-class support in Vitest, allows `vitest --project unit` without touching integration/swagger |
-| Integration client | `RentalWorksClient` directly | Avoids MCP protocol overhead, gives clean error surfaces, easier to assert raw API shapes |
-| Spec caching | Local JSON files in `.planning/swagger-cache/` | Decouples test speed from network reliability; cache is gitignored |
-| Read-only enforcement | Wrapper module with restricted exports | Clear architectural boundary, grep-checkable |
+1. **Field projection:** `fields` arg flows from schema → tool handler → `formatBrowseResult` options. No change to the API call or api-client.ts.
+2. **Client-side filter:** `clientFilter` arg flows from schema → tool handler → `withClientSideFallback`. On error, re-fetch without broken search field, filter rows locally, return as if normal browse.
+3. **Default fields:** Browse tools use a named constant (e.g. `RENTAL_INVENTORY_BRIEF_FIELDS`) when caller omits `fields`. Explicit `fields: [...]` in args overrides this.
+4. **Error bubbling:** `withClientSideFallback` only intercepts "Invalid column name" errors when `clientFilter` is provided. All other errors propagate to `withErrorHandling` unchanged — existing behavior preserved.
 
----
+## Integration Points
 
-## Scalability Considerations
+### Modified Components
 
-| Concern | Now (114 tools) | At 200 tools | At 500 tools |
-|---------|----------------|-------------|-------------|
-| Unit test run time | ~5s | ~10s | ~25s |
-| Swagger validation | ~10s (with cache) | ~12s | ~20s |
-| Integration smoke tests | ~30s (5 entities) | ~60s (10 entities) | Run subset only |
-| Swagger cache freshness | Re-fetch on RW updates | Same | Same |
+| Component | What Changes | What Stays the Same |
+|-----------|-------------|---------------------|
+| `tool-helpers.ts / browseSchema` | Add `fields?` and `clientFilter?` optional fields | All existing fields, defaults, operators — fully backward compatible |
+| `tool-helpers.ts / formatBrowseResult` | Accept optional `options?: { fields?: string[] }` second parameter | All callers passing no second arg continue to work identically |
+| `tools/inventory.ts` browse handlers | Pass `fields` / `clientFilter` to helpers; set smaller default `pageSize`; use `withClientSideFallback` | CRUD tools (get/create/update/delete/copy) completely untouched |
 
-The architecture remains valid through significant tool count growth. The main concern at scale is integration test time — keep smoke tests to 5-10 key entities and assert shape only, not data.
+### New Components
 
----
+| Component | Purpose | Dependencies |
+|-----------|---------|-------------|
+| `utils/browse-helpers.ts` | `applyClientFilter`, `withClientSideFallback`, default field constant sets | Only `../types/api.js` for `BrowseResponse` type — no MCP SDK, no tool-helpers |
+
+### Internal Boundaries
+
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| Tool handler → browse-helpers | Direct function calls | browse-helpers has zero MCP SDK dependency; fully unit-testable with mock data |
+| Tool handler → tool-helpers | Direct function calls (unchanged) | Non-inventory browse tools unaffected by this milestone |
+| browse-helpers → api-client | No direct coupling | browse-helpers receives already-fetched `BrowseResponse` data; all API calls stay in tool handlers |
+| withClientSideFallback → withErrorHandling | Layered: inner wraps fetch, outer wraps handler | withClientSideFallback runs inside the handler; withErrorHandling wraps the entire handler call |
+
+## Anti-Patterns
+
+### Anti-Pattern 1: Filtering Inside api-client.ts
+
+**What people do:** Add `clientFilter` to `RentalWorksClient.browse()` and apply filtering there.
+**Why it's wrong:** The api-client layer owns HTTP communication. Adding filtering logic couples it to application concerns, makes it harder to test in isolation, and silently applies the behavior to every caller of `browse()` — including CRUD scaffolding, checkout sessions, and other domains.
+**Do this instead:** Keep filtering in browse-helpers.ts. Invoke explicitly from tool handlers where the intent is clear.
+
+### Anti-Pattern 2: Auto-Fallback on Every 500 Error
+
+**What people do:** Make every browse call automatically retry with client-side filtering on any 500.
+**Why it's wrong:** Silent auto-retry on all 500s masks real server errors as seemingly successful (but silently unfiltered) responses. The fallback requires a larger `pageSize` to be meaningful, and the caller needs to choose that consciously. Auto-fallback without caller awareness creates non-deterministic results.
+**Do this instead:** Only activate `withClientSideFallback` when `clientFilter` is explicitly provided. The presence of `clientFilter` signals that the caller understands the trade-off and accepts client-side filtering.
+
+### Anti-Pattern 3: Server-Side Field Selection via Request Body
+
+**What people do:** Add a `fields` array to the API request body, hoping the server returns fewer fields.
+**Why it's wrong:** RentalWorks browse endpoints do not support server-side field selection (not in Swagger spec). The server will ignore the field or return a 400/500 error.
+**Do this instead:** Project fields client-side in `formatBrowseResult` — fetch the full payload, strip before formatting.
+
+### Anti-Pattern 4: Collapsing Fallback and Error-Formatting Into One Wrapper
+
+**What people do:** Extend `withErrorHandling` to also handle the fallback retry logic — one wrapper for both concerns.
+**Why it's wrong:** `withErrorHandling` formats exceptions as LLM-readable text and returns a `ToolResult`. The fallback retry must return actual `BrowseResponse` data, not a `ToolResult`. These two contracts are incompatible in the same function. Mixing them means the fallback can never cleanly return real data.
+**Do this instead:** Layer them: `withClientSideFallback` runs inside the handler (returns data or re-throws). `withErrorHandling` wraps the entire handler (catches whatever `withClientSideFallback` re-threw and returns error text).
+
+## Suggested Build Order
+
+Dependencies drive this order. Each step produces something the next step can test before the next step starts.
+
+### Step 1: browse-helpers.ts — Pure Functions
+
+Build and unit-test the pure utility functions with mock data:
+- `applyClientFilter(rows, filter)` — array in, filtered array out
+- Default field constants (`RENTAL_INVENTORY_BRIEF_FIELDS`, `ITEMS_BRIEF_FIELDS`, etc.)
+
+Zero dependencies on MCP, api-client, or tool-helpers. Test completely with inline mock arrays. No server access needed.
+
+### Step 2: withClientSideFallback — Async Wrapper
+
+Build and test with mocked `fetchFn` / `fallbackFetchFn` functions:
+- Happy path: no error → returns original data, fallback never called
+- Error matching "Invalid column name" + clientFilter provided → fallback called, filter applied
+- Error matching "Invalid column name" + no clientFilter → error re-thrown
+- Other errors → re-thrown regardless
+
+### Step 3: Extend formatBrowseResult — Backward-Compatible Signature Change
+
+Add optional `options?: { fields?: string[] }` parameter. Existing callers pass nothing — behavior unchanged. Existing unit tests must continue to pass without modification. Add new test cases for the projection behavior.
+
+### Step 4: Extend browseSchema — Additive Schema Fields
+
+Add `fields` and `clientFilter` to `browseSchema`. Both optional with no defaults. All existing browse tools continue to work without changes to their handler functions. Run full unit test suite to confirm no regressions.
+
+### Step 5: Update Inventory Browse Handlers
+
+For each browse tool in inventory.ts:
+- Pass `fields` and `clientFilter` from args to formatBrowseResult and withClientSideFallback
+- Set inventory-specific default `pageSize` (e.g. 10 instead of 25)
+- Apply appropriate `BRIEF_FIELDS` constant as default when caller omits `fields`
+- Wrap the `client.post()` call in `withClientSideFallback` using `args.clientFilter`
+
+This is the widest change in terms of lines touched but all primitives are stable and tested by this point.
+
+### Step 6: Integration Tests
+
+Add read-only integration test cases:
+- Browse with explicit `fields` array — confirm output contains only requested fields
+- Browse with large `pageSize` and `clientFilter` on a known-broken column — confirm fallback works end-to-end against live API
+- Browse with no `fields` and no `clientFilter` — confirm existing output shape is unchanged (regression guard)
 
 ## Sources
 
-- [vitest-dev/vitest Discussion #4675: How to separate unit and integration tests](https://github.com/vitest-dev/vitest/discussions/4675) — MEDIUM confidence (community discussion, not official docs)
-- [vitest-dev/vitest Discussion #5557: Splitting tests based on file suffix](https://github.com/vitest-dev/vitest/discussions/5557) — MEDIUM confidence
-- [APIDevTools/swagger-parser GitHub](https://github.com/APIDevTools/swagger-parser) — HIGH confidence (official repo)
-- [swagger-parser npm](https://www.npmjs.com/package/swagger-parser) — HIGH confidence
-- [MCPcat: Unit Testing MCP Servers](https://mcpcat.io/guides/writing-unit-tests-mcp-servers/) — MEDIUM confidence (third-party guide)
-- [MCPcat: MCP Integration Testing](https://mcpcat.io/guides/integration-tests-mcp-flows/) — MEDIUM confidence
-- [yutak23/vitest-openapi GitHub](https://github.com/yutak23/vitest-openapi) — HIGH confidence (response validation only, not applicable here)
-- [openapi-ts testing docs](https://openapi-ts.dev/openapi-fetch/testing) — MEDIUM confidence (different use case but pattern informative)
+- Direct code inspection: `src/utils/tool-helpers.ts`, `src/utils/api-client.ts`, `src/tools/inventory.ts`
+- Project context: `.planning/PROJECT.md` (v1.1 milestone requirements, broken column documentation)
+- CLAUDE.md: Project constraints and known RW server-side 500 patterns
+
+---
+*Architecture research for: RentalWorks MCP Server v1.1 — inventory browse fix*
+*Researched: 2026-04-11*
