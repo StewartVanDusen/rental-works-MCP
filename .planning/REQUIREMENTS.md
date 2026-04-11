@@ -1,117 +1,67 @@
-# Requirements: RentalWorks MCP Server — Production Readiness
+# Requirements: RentalWorks MCP Server — v1.1 Inventory Browse Fix
 
-**Defined:** 2026-04-09
+**Defined:** 2026-04-11
 **Core Value:** Every MCP tool must call the correct API endpoint with the correct method, path, and request body — verified by tests and validated against the live Swagger spec.
 
-## v1 Requirements
+## v1.1 Requirements
 
-### Foundation
+Requirements for inventory browse fix milestone. Each maps to roadmap phases.
 
-- [ ] **FOUND-01**: `zod` added to package.json dependencies (not just devDependencies)
-- [ ] **FOUND-02**: `@vitest/coverage-v8` added to devDependencies
-- [ ] **FOUND-03**: Test files reorganized into `src/__tests__/unit/` and `src/__tests__/integration/` directories
-- [ ] **FOUND-04**: `vitest.config.ts` configured with separate test projects (unit, integration)
+### Field Selection
 
-### Path Validation
+- [ ] **FSEL-01**: User can pass an optional `fields` array to inventory browse tools to receive only specified fields per row
+- [ ] **FSEL-02**: Named field presets (SUMMARY, FULL) are available as shorthand for common field sets
+- [ ] **FSEL-03**: Inventory browse tools default to SUMMARY preset, reducing per-item payload from ~2,200 chars to ~200
 
-- [x] **PATH-01**: All 114 existing tool API paths audited against the 12 Swagger sub-specs
-- [x] **PATH-02**: Sub-spec domain mapping table built (tool → Swagger spec → confirmed path)
-- [ ] **PATH-03**: All incorrect API paths fixed to match Swagger spec
-- [ ] **PATH-04**: Storefront category browsing path corrected to match storefront-v1 spec
-- [ ] **PATH-05**: Checkout/checkin paths verified against warehouse-v1 spec
-- [ ] **PATH-06**: Invoice lifecycle paths (approve, process, void) verified against home-v1 spec
-- [x] **PATH-07**: Automated Swagger spec parser that fetches and diffs tool paths against live spec JSON
+### Client-Side Filtering
 
-### Unit Tests
+- [ ] **CFLT-01**: When API server-side filter returns a 500 "Invalid column name" error, the MCP layer automatically retries without server filters and applies the search logic client-side
+- [ ] **CFLT-02**: Client-side filtering supports all existing search operators (like, contains, startswith, endswith, =, <>)
+- [ ] **CFLT-03**: When client-side filtering is active, pagination metadata is corrected to reflect actual filtered result count (not the unfiltered API total)
 
-- [ ] **TEST-01**: Path + method + body unit tests for all billing domain tools (13 tools)
-- [ ] **TEST-02**: Path + method + body unit tests for all admin domain tools (5 tools)
-- [ ] **TEST-03**: Path + method + body unit tests for all customer domain tools (13 tools)
-- [ ] **TEST-04**: Path + method + body unit tests for all settings domain tools (14 tools)
-- [ ] **TEST-05**: Existing test assertions audited — every `it()` block asserts `capturedUrl` and `capturedMethod`
-- [ ] **TEST-06**: Error handling tests: API 4xx/5xx responses return user-friendly messages
-- [ ] **TEST-07**: Error handling tests: authentication failure triggers re-auth
-- [ ] **TEST-08**: Error handling tests: malformed/empty API responses handled gracefully
-- [ ] **TEST-09**: Error handling tests: `withErrorHandling` correctly detects known RW server issues
+### Response Optimization
 
-### Integration Tests
-
-- [ ] **INTG-01**: Integration test suite with `describe.skipIf(!process.env.RENTALWORKS_BASE_URL)` guard
-- [ ] **INTG-02**: JWT authentication integration test (real token acquisition)
-- [ ] **INTG-03**: Read-only browse smoke tests for core entities (inventory, orders, customers, deals)
-- [ ] **INTG-04**: Read-only GET-by-ID tests for at least one entity per domain
-- [ ] **INTG-05**: Session info retrieval test (`/api/v1/account/session`)
-- [ ] **INTG-06**: Response shape validation (confirms API returns expected field structure)
-
-### Expansion
-
-- [ ] **EXPN-01**: Address management tools (browse, get, create, update, delete) — home-v1 API
-- [ ] **EXPN-02**: Change order status utility tool — utilities-v1 API
-- [ ] **EXPN-03**: Unit tests for all new tools following established patterns
-- [ ] **EXPN-04**: Integration smoke tests for new tools (read-only)
+- [ ] **ROPT-01**: Inventory browse tools use a smaller default page size (10 instead of 25) to reduce payload
 
 ## v2 Requirements
 
-### Expansion — Deferred
+Deferred to future release. Tracked but not in current roadmap.
 
-- **EXPN-D1**: Dashboard widget loading endpoints
-- **EXPN-D2**: Activity log browse/CRUD
-- **EXPN-D3**: Inventory merge utility
-- **EXPN-D4**: MCP SDK upgrade to ^1.29.0
+### Advanced Search
+
+- **ASRCH-01**: Multi-page scan tool that fetches and filters across multiple pages for broad inventory searches
 
 ## Out of Scope
 
+Explicitly excluded. Documented to prevent scope creep.
+
 | Feature | Reason |
 |---------|--------|
-| Mobile/QuikScan endpoints | Specialized scanner hardware workflows, not useful via MCP |
-| Plugins API | Instance-specific plugin endpoints, not generalizable |
-| Pages API (CardPointe) | Only 2 payment page endpoints, niche use case |
-| System admin (CreateNewSystem) | Dangerous operations, shouldn't be exposed via MCP |
-| OAuth/Okta/Azure AD auth | JWT auth sufficient for MCP usage |
-| Mutable integration tests | Live instance has real data, risk of data corruption |
-| Auto-generated tools from Swagger | Unreviewed auto-gen creates maintenance burden, prefer curated tools |
-| Vitest 4.x upgrade | Breaking changes, not worth risk during hardening milestone |
+| Fix RW server-side DB bugs (masterid/rentalitemid) | Server-side issues in RentalWorks SQL query builder — cannot fix from MCP layer |
+| Multi-page scan tool | High complexity, narrow use case — defer to v1.2 |
+| Report discovery endpoint | Separate concern from browse optimization |
+| AI assistant OpenAI config | Environment configuration issue, not MCP code |
+| Modify shared browseSchema | Research confirmed: spreads to all 114 tools, must not be polluted with inventory-specific params |
 
 ## Traceability
 
+Which phases cover which requirements. Updated during roadmap creation.
+
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FOUND-01 | Phase 1 | Pending |
-| FOUND-02 | Phase 1 | Pending |
-| FOUND-03 | Phase 1 | Pending |
-| FOUND-04 | Phase 1 | Pending |
-| PATH-01 | Phase 2 | Complete |
-| PATH-02 | Phase 2 | Complete |
-| PATH-03 | Phase 3 | Pending |
-| PATH-04 | Phase 3 | Pending |
-| PATH-05 | Phase 3 | Pending |
-| PATH-06 | Phase 3 | Pending |
-| PATH-07 | Phase 2 | Complete |
-| TEST-01 | Phase 3 | Pending |
-| TEST-02 | Phase 3 | Pending |
-| TEST-03 | Phase 3 | Pending |
-| TEST-04 | Phase 3 | Pending |
-| TEST-05 | Phase 3 | Pending |
-| TEST-06 | Phase 4 | Pending |
-| TEST-07 | Phase 4 | Pending |
-| TEST-08 | Phase 4 | Pending |
-| TEST-09 | Phase 4 | Pending |
-| INTG-01 | Phase 5 | Pending |
-| INTG-02 | Phase 5 | Pending |
-| INTG-03 | Phase 5 | Pending |
-| INTG-04 | Phase 5 | Pending |
-| INTG-05 | Phase 5 | Pending |
-| INTG-06 | Phase 5 | Pending |
-| EXPN-01 | Phase 6 | Pending |
-| EXPN-02 | Phase 6 | Pending |
-| EXPN-03 | Phase 6 | Pending |
-| EXPN-04 | Phase 6 | Pending |
+| FSEL-01 | — | Pending |
+| FSEL-02 | — | Pending |
+| FSEL-03 | — | Pending |
+| CFLT-01 | — | Pending |
+| CFLT-02 | — | Pending |
+| CFLT-03 | — | Pending |
+| ROPT-01 | — | Pending |
 
 **Coverage:**
-- v1 requirements: 30 total
-- Mapped to phases: 30
-- Unmapped: 0 ✓
+- v1.1 requirements: 7 total
+- Mapped to phases: 0
+- Unmapped: 7 ⚠️
 
 ---
-*Requirements defined: 2026-04-09*
-*Last updated: 2026-04-09 after initial definition*
+*Requirements defined: 2026-04-11*
+*Last updated: 2026-04-11 after initial definition*
