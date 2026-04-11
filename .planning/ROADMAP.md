@@ -126,7 +126,7 @@ Plans:
   4. Unit tests for `browse-helpers.ts` pass with `vitest --project unit` and require no network access or environment variables
 **Plans:** 1 plan
 Plans:
-- [ ] 07-01-PLAN.md — TDD: Create browse-helpers.ts with applyClientFilter, withClientSideFallback, and field constants + full unit test suite
+- [x] 07-01-PLAN.md — TDD: Create browse-helpers.ts with applyClientFilter, withClientSideFallback, and field constants + full unit test suite
 
 ### Phase 8: Schema and Formatter Extension
 **Goal**: Inventory browse tools accept optional `fields` and `clientFilter` parameters and `formatBrowseResult` can project a subset of fields — all changes backward-compatible, existing 114 tools unaffected
@@ -137,7 +137,9 @@ Plans:
   2. Passing `fieldPreset: "summary"` returns the curated `RENTAL_INVENTORY_BRIEF_FIELDS` set without the caller knowing individual field names
   3. All existing unit tests for non-inventory tools pass without modification after the schema change — `grep "fields" src/utils/tool-helpers.ts` returns nothing (no pollution of shared `browseSchema`)
   4. `npx tsc --noEmit` passes after changes to `tool-helpers.ts`
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 08-01-PLAN.md — Add inventoryFieldSchema, projectFields, resolveFieldPreset; extend formatBrowseResult; spread into inventory.ts
 **UI hint**: no
 
 ### Phase 9: Inventory Handler Wiring
@@ -149,7 +151,9 @@ Plans:
   2. A browse call with no `fields` or `fieldPreset` argument returns the `BRIEF_FIELDS` default set (~200 chars/item vs ~2,200 chars previously)
   3. When client-side filtering is active, the response metadata reads "Showing X of Y (client-filtered)" where X is the filtered count and Y is the unfiltered API total — agents are never given a misleading total
   4. CRUD tools in `inventory.ts` (get, create, update, delete) are completely unchanged — verified by running the existing unit test suite with zero modifications to CRUD-related tests
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 08-01-PLAN.md — Add inventoryFieldSchema, projectFields, resolveFieldPreset; extend formatBrowseResult; spread into inventory.ts
 
 ### Phase 10: Integration Verification
 **Goal**: All v1.1 changes are confirmed to work correctly against the live RentalWorks API instance using read-only requests
@@ -160,7 +164,9 @@ Plans:
   2. A browse call that triggers the "Invalid column name" 500 error automatically retries and returns client-filtered results — confirmed by passing a known-broken filter column in the test
   3. A default (no arguments) `browse_rental_inventory` call returns at most 10 items with the BRIEF_FIELDS shape — total response under 3,000 chars
   4. Integration tests skip automatically when `RENTALWORKS_BASE_URL` is not set
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 08-01-PLAN.md — Add inventoryFieldSchema, projectFields, resolveFieldPreset; extend formatBrowseResult; spread into inventory.ts
 
 ## Progress
 
@@ -177,6 +183,6 @@ v1.1: 7 -> 8 -> 9 -> 10
 | 5. Integration Tests | 0/1 | Not started | - |
 | 6. Expansion | 0/2 | Not started | - |
 | 7. Browse Utilities | 0/1 | Not started | - |
-| 8. Schema and Formatter Extension | 0/? | Not started | - |
+| 8. Schema and Formatter Extension | 0/1 | Not started | - |
 | 9. Inventory Handler Wiring | 0/? | Not started | - |
 | 10. Integration Verification | 0/? | Not started | - |
