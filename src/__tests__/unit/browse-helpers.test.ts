@@ -11,12 +11,14 @@ import { join } from "path";
 import {
   applyClientFilter,
   withClientSideFallback,
+  withClientSideFallbackTracked,
   RENTAL_INVENTORY_BRIEF_FIELDS,
   ITEMS_BRIEF_FIELDS,
   projectFields,
   resolveFieldPreset,
   inventoryFieldSchema,
 } from "../../utils/browse-helpers.js";
+import type { ClientSideFallbackResult } from "../../utils/browse-helpers.js";
 import type { BrowseResponse } from "../../types/api.js";
 
 // ── applyClientFilter ──────────────────────────────────────────────────────────
@@ -294,5 +296,122 @@ describe("inventoryFieldSchema", () => {
     expect(() =>
       z.object({ fieldPreset: inventoryFieldSchema.fieldPreset }).parse({ fieldPreset: "invalid" })
     ).toThrow();
+  });
+});
+
+// ── withClientSideFallbackTracked ──────────────────────────────────────────────
+
+describe("withClientSideFallbackTracked", () => {
+  it("Test A: when fetchFn succeeds on first try, returns clientFiltered: false with correct unfilteredTotal", async () => {
+    const mockResponse: BrowseResponse = {
+      PageNo: 1,
+      PageSize: 25,
+      TotalRows: 2,
+      TotalPages: 1,
+      Rows: [{ Description: "LED Lamp" }, { Description: "Halogen" }],
+    };
+    const fetchFn = vi.fn().mockResolvedValue(mockResponse);
+    const request = { searchfields: ["Description"], searchfieldvalues: ["lamp"] };
+
+    const result: ClientSideFallbackResult = await withClientSideFallbackTracked(fetchFn, request);
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.clientFiltered).toBe(false);
+    expect(result.unfilteredTotal).toBe(2);
+    expect(result.response).toEqual(mockResponse);
+  });
+
+  it("Test B: when fetchFn throws 'Invalid column name' and retries with client filter, returns clientFiltered: true with unfilteredTotal from retry", async () => {
+    const retryResponse: BrowseResponse = {
+      PageNo: 1,
+      PageSize: 25,
+      TotalRows: 3,
+      TotalPages: 1,
+      Rows: [
+        { Description: "LED Lamp" },
+        { Description: "Halogen" },
+        { Description: "Spot Light" },
+      ],
+    };
+
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("API POST /api/v1/rentalinventory/browse failed: 500 - Invalid column name 'masterid'")
+      )
+      .mockResolvedValueOnce(retryResponse);
+
+    const request = {
+      searchfields: ["Description"],
+      searchfieldvalues: ["Lamp"],
+      searchfieldoperators: ["like"],
+      searchseparators: ["and"],
+    };
+
+    const result = await withClientSideFallbackTracked(
+      fetchFn,
+      request,
+      "Description",
+      "Lamp",
+      "like"
+    );
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result.clientFiltered).toBe(true);
+    expect(result.unfilteredTotal).toBe(3);
+    expect(result.response.Rows).toEqual([{ Description: "LED Lamp" }]);
+    expect(result.response.TotalRows).toBe(1);
+  });
+
+  it("Test C: when fetchFn throws 'Invalid column name' and retries WITHOUT searchField/searchValue, returns clientFiltered: false", async () => {
+    const retryResponse: BrowseResponse = {
+      PageNo: 1,
+      PageSize: 25,
+      TotalRows: 5,
+      TotalPages: 1,
+      Rows: [{ Description: "Item A" }, { Description: "Item B" }],
+    };
+
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("API POST failed: 500 - Invalid column name 'foo'")
+      )
+      .mockResolvedValueOnce(retryResponse);
+
+    const result = await withClientSideFallbackTracked(fetchFn, {});
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result.clientFiltered).toBe(false);
+    expect(result.unfilteredTotal).toBe(5);
+    expect(result.response).toEqual(retryResponse);
+  });
+
+  it("Test D: when fetchFn throws a non-column error, re-throws unchanged", async () => {
+    const originalError = new Error("503 Service Unavailable");
+    const fetchFn = vi.fn().mockRejectedValue(originalError);
+
+    await expect(
+      withClientSideFallbackTracked(fetchFn, {})
+    ).rejects.toThrow("503 Service Unavailable");
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("Test E: when retry also fails, throws the retry error", async () => {
+    const retryError = new Error("503 Service Unavailable on retry");
+
+    const fetchFn = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error("API POST failed: 500 - Invalid column name 'foo'")
+      )
+      .mockRejectedValueOnce(retryError);
+
+    await expect(
+      withClientSideFallbackTracked(fetchFn, {})
+    ).rejects.toThrow("503 Service Unavailable on retry");
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
   });
 });

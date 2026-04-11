@@ -138,22 +138,6 @@ export function registerUtilityTools(server: McpServer) {
     }
   );
 
-  // ── Change Order Status Utility ────────────────────────────────────────
-
-  server.tool(
-    "change_order_status",
-    "Change the status of an order using the change order status utility.",
-    {
-      OrderId: z.string().describe("The order ID to change status for"),
-      StatusId: z.string().describe("The new order status ID"),
-    },
-    async (args) => {
-      const client = getClient();
-      const data = await client.post("/api/v1/changeorderstatus/changestatus", args);
-      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
-  );
-
   // ── QuickBooks Sync ─────────────────────────────────────────────────────
 
   server.tool(
@@ -166,7 +150,7 @@ export function registerUtilityTools(server: McpServer) {
     },
     async ({ entityType, entityId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/${entityType}/synctoqbo`, { Id: entityId });
+      const data = await client.post(`/api/v1/${entityType}/${entityId}/synctoqbo`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
     }
   );

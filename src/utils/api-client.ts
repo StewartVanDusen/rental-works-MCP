@@ -90,31 +90,6 @@ export class RentalWorksClient {
     });
 
     if (!res.ok) {
-      // 401/403: clear token, re-authenticate, retry once
-      if (res.status === 401 || res.status === 403) {
-        this.token = null;
-        this.tokenExpiry = 0;
-        const retryToken = await this.ensureAuth();
-        headers.Authorization = `Bearer ${retryToken}`;
-        const retryRes = await fetch(url, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        });
-        if (!retryRes.ok) {
-          const retryText = await retryRes.text();
-          throw new Error(`API ${method} ${path} failed: ${retryRes.status} - ${retryText}`);
-        }
-        const retryText = await retryRes.text();
-        if (!retryText) return {} as T;
-        try {
-          return JSON.parse(retryText) as T;
-        } catch {
-          throw new Error(
-            `API ${method} ${path} failed: retry response was not valid JSON. Received: ${retryText.slice(0, 200)}`
-          );
-        }
-      }
       const text = await res.text();
       throw new Error(`API ${method} ${path} failed: ${res.status} - ${text}`);
     }
@@ -122,13 +97,7 @@ export class RentalWorksClient {
     // Some endpoints return empty responses
     const text = await res.text();
     if (!text) return {} as T;
-    try {
-      return JSON.parse(text) as T;
-    } catch {
-      throw new Error(
-        `API ${method} ${path} failed: response was not valid JSON. Received: ${text.slice(0, 200)}`
-      );
-    }
+    return JSON.parse(text) as T;
   }
 
   /**
