@@ -8,6 +8,7 @@
  * Zero MCP SDK dependency — pure TypeScript utility with no external imports.
  */
 
+import { z } from "zod";
 import type { BrowseResponse } from "../types/api.js";
 
 
@@ -51,6 +52,67 @@ export const ITEMS_BRIEF_FIELDS: string[] = [
   "OwnershipStatus",
   "Condition",
 ];
+
+
+// ── Field selection schema ───────────────────────────────────────────────────
+
+/**
+ * Zod schema fields for optional field selection in inventory browse tools.
+ * Spread alongside browseSchema in inventory tool definitions only —
+ * must NOT be added to the shared browseSchema in tool-helpers.ts.
+ */
+export const inventoryFieldSchema = {
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe("Return only these fields per row (e.g. ['InventoryId', 'Description'])"),
+  fieldPreset: z
+    .enum(["summary", "full"])
+    .optional()
+    .describe("Named field preset: 'summary' returns brief fields set, 'full' returns all fields"),
+};
+
+
+// ── Field projection ─────────────────────────────────────────────────────────
+
+/**
+ * Project rows to include only the specified fields.
+ * Returns new row objects — does not mutate the originals.
+ * If fields is empty, returns rows unchanged.
+ */
+export function projectFields(
+  rows: Record<string, unknown>[],
+  fields: string[]
+): Record<string, unknown>[] {
+  if (fields.length === 0) return rows;
+  return rows.map((row) => {
+    const projected: Record<string, unknown> = {};
+    for (const field of fields) {
+      if (field in row) {
+        projected[field] = row[field];
+      }
+    }
+    return projected;
+  });
+}
+
+/**
+ * Resolve a field preset name to a concrete array of field names.
+ * Returns undefined for "full" preset or undefined input (meaning no projection).
+ */
+export function resolveFieldPreset(
+  fieldPreset: string | undefined,
+  entityType: "rentalInventory" | "items"
+): string[] | undefined {
+  if (!fieldPreset) return undefined;
+  if (fieldPreset === "summary") {
+    return entityType === "rentalInventory"
+      ? RENTAL_INVENTORY_BRIEF_FIELDS
+      : ITEMS_BRIEF_FIELDS;
+  }
+  // "full" = no projection (return all fields)
+  return undefined;
+}
 
 
 // ── applyClientFilter ──────────────────────────────────────────────────────────

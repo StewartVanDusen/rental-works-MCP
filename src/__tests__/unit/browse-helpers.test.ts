@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
+import { z } from "zod";
 import { readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -12,6 +13,9 @@ import {
   withClientSideFallback,
   RENTAL_INVENTORY_BRIEF_FIELDS,
   ITEMS_BRIEF_FIELDS,
+  projectFields,
+  resolveFieldPreset,
+  inventoryFieldSchema,
 } from "../../utils/browse-helpers.js";
 import type { BrowseResponse } from "../../types/api.js";
 
@@ -204,5 +208,91 @@ describe("module purity", () => {
     );
     const content = readFileSync(filePath, "utf-8");
     expect(content).not.toContain("@modelcontextprotocol/sdk");
+  });
+});
+
+// ── projectFields ──────────────────────────────────────────────────────────────
+
+describe("projectFields", () => {
+  it("Test 17: projects rows to specified fields only", () => {
+    const rows = [
+      { InventoryId: "1", Description: "Lamp", Extra: "x" },
+      { InventoryId: "2", Description: "Spot", Extra: "y" },
+    ];
+    const result = projectFields(rows, ["InventoryId", "Description"]);
+    expect(result).toEqual([
+      { InventoryId: "1", Description: "Lamp" },
+      { InventoryId: "2", Description: "Spot" },
+    ]);
+  });
+
+  it("Test 18: returns rows unchanged when fields array is empty", () => {
+    const rows = [
+      { InventoryId: "1", Description: "Lamp", Extra: "x" },
+      { InventoryId: "2", Description: "Spot", Extra: "y" },
+    ];
+    const result = projectFields(rows, []);
+    expect(result).toBe(rows);
+  });
+
+  it("Test 19: skips fields not present in row", () => {
+    const rows = [{ InventoryId: "1" }];
+    const result = projectFields(rows, ["InventoryId", "NonExistent"]);
+    expect(result).toEqual([{ InventoryId: "1" }]);
+  });
+
+  it("Test 20: does not mutate original row objects", () => {
+    const original = { InventoryId: "1", Description: "Lamp", Extra: "x" };
+    projectFields([original], ["InventoryId"]);
+    expect(original).toHaveProperty("Extra");
+    expect(original.Extra).toBe("x");
+  });
+});
+
+// ── resolveFieldPreset ─────────────────────────────────────────────────────────
+
+describe("resolveFieldPreset", () => {
+  it("Test 21: 'summary' with rentalInventory returns RENTAL_INVENTORY_BRIEF_FIELDS", () => {
+    expect(resolveFieldPreset("summary", "rentalInventory")).toBe(RENTAL_INVENTORY_BRIEF_FIELDS);
+  });
+
+  it("Test 22: 'summary' with items returns ITEMS_BRIEF_FIELDS", () => {
+    expect(resolveFieldPreset("summary", "items")).toBe(ITEMS_BRIEF_FIELDS);
+  });
+
+  it("Test 23: 'full' returns undefined", () => {
+    expect(resolveFieldPreset("full", "rentalInventory")).toBeUndefined();
+  });
+
+  it("Test 24: undefined preset returns undefined", () => {
+    expect(resolveFieldPreset(undefined, "rentalInventory")).toBeUndefined();
+  });
+});
+
+// ── inventoryFieldSchema ───────────────────────────────────────────────────────
+
+describe("inventoryFieldSchema", () => {
+  it("Test 25: fields schema accepts string array", () => {
+    expect(() =>
+      z.object({ fields: inventoryFieldSchema.fields }).parse({ fields: ["InventoryId", "Description"] })
+    ).not.toThrow();
+  });
+
+  it("Test 26: fields schema accepts undefined", () => {
+    expect(() =>
+      z.object({ fields: inventoryFieldSchema.fields }).parse({})
+    ).not.toThrow();
+  });
+
+  it("Test 27: fieldPreset schema accepts 'summary'", () => {
+    expect(() =>
+      z.object({ fieldPreset: inventoryFieldSchema.fieldPreset }).parse({ fieldPreset: "summary" })
+    ).not.toThrow();
+  });
+
+  it("Test 28: fieldPreset schema rejects invalid value", () => {
+    expect(() =>
+      z.object({ fieldPreset: inventoryFieldSchema.fieldPreset }).parse({ fieldPreset: "invalid" })
+    ).toThrow();
   });
 });
