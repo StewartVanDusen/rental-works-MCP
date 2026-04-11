@@ -153,7 +153,7 @@ Plans:
   4. CRUD tools in `inventory.ts` (get, create, update, delete) are completely unchanged — verified by running the existing unit test suite with zero modifications to CRUD-related tests
 **Plans:** 1 plan
 Plans:
-- [ ] 09-01-PLAN.md — Wire browse handlers with field defaults, page size override, client-filtered metadata, and withClientSideFallbackTracked utility
+- [x] 09-01-PLAN.md — Wire browse handlers with field defaults, page size override, client-filtered metadata, and withClientSideFallbackTracked utility
 
 ### Phase 10: Integration Verification
 **Goal**: All v1.1 changes are confirmed to work correctly against the live RentalWorks API instance using read-only requests
@@ -166,7 +166,7 @@ Plans:
   4. Integration tests skip automatically when `RENTALWORKS_BASE_URL` is not set
 **Plans:** 1 plan
 Plans:
-- [ ] 09-01-PLAN.md — Wire browse handlers with field defaults, page size override, client-filtered metadata, and withClientSideFallbackTracked utility
+- [ ] 10-01-PLAN.md — Integration tests for v1.1 browse enhancements (field selection, BRIEF_FIELDS defaults, client-side fallback, response size)
 
 ## Progress
 
@@ -185,4 +185,4 @@ v1.1: 7 -> 8 -> 9 -> 10
 | 7. Browse Utilities | 0/1 | Not started | - |
 | 8. Schema and Formatter Extension | 1/1 | Complete | 2026-04-11 |
 | 9. Inventory Handler Wiring | 0/1 | Not started | - |
-| 10. Integration Verification | 0/? | Not started | - |
+| 10. Integration Verification | 0/1 | Not started | - |
