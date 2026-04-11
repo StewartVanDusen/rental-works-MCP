@@ -124,7 +124,9 @@ Plans:
   2. `applyClientFilter` correctly applies all six operators (`like`, `contains`, `startswith`, `endswith`, `=`, `<>`) against in-memory row arrays, verified by unit tests using mock data
   3. `withClientSideFallback` detects an "Invalid column name" 500 error, retries the fetch without server-side search fields, and applies `applyClientFilter` to the retry results — verified by unit tests with a mock API client
   4. Unit tests for `browse-helpers.ts` pass with `vitest --project unit` and require no network access or environment variables
-**Plans**: TBD
+**Plans:** 1 plan
+Plans:
+- [ ] 07-01-PLAN.md — TDD: Create browse-helpers.ts with applyClientFilter, withClientSideFallback, and field constants + full unit test suite
 
 ### Phase 8: Schema and Formatter Extension
 **Goal**: Inventory browse tools accept optional `fields` and `clientFilter` parameters and `formatBrowseResult` can project a subset of fields — all changes backward-compatible, existing 114 tools unaffected
@@ -174,7 +176,7 @@ v1.1: 7 -> 8 -> 9 -> 10
 | 4. Error Handling | 0/2 | Not started | - |
 | 5. Integration Tests | 0/1 | Not started | - |
 | 6. Expansion | 0/2 | Not started | - |
-| 7. Browse Utilities | 0/? | Not started | - |
+| 7. Browse Utilities | 0/1 | Not started | - |
 | 8. Schema and Formatter Extension | 0/? | Not started | - |
 | 9. Inventory Handler Wiring | 0/? | Not started | - |
 | 10. Integration Verification | 0/? | Not started | - |
