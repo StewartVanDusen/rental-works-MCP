@@ -1,78 +1,45 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-stopped_at: Completed 02-02-PLAN.md (swagger spec test suite)
-last_updated: "2026-04-10T05:06:17.098Z"
-last_activity: 2026-04-10
+milestone: v1.1
+milestone_name: Inventory Browse Fix
+status: defining-requirements
+stopped_at: null
+last_updated: "2026-04-11"
+last_activity: 2026-04-11
 progress:
-  total_phases: 6
-  completed_phases: 6
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-09)
+See: .planning/PROJECT.md (updated 2026-04-11)
 
 **Core value:** Every MCP tool must call the correct API endpoint with the correct method, path, and request body — verified by tests and validated against the live Swagger spec.
-**Current focus:** Phase 02 — Swagger Validation
+**Current focus:** Defining requirements for v1.1 Inventory Browse Fix
 
 ## Current Position
 
-Phase: 06
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-04-10
-
-Progress: [░░░░░░░░░░] 0%
-
-## Performance Metrics
-
-**Velocity:**
-
-- Total plans completed: 11
-- Average duration: —
-- Total execution time: —
-
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 1 | - | - |
-| 02 | 2 | - | - |
-| 03 | 3 | - | - |
-| 04 | 2 | - | - |
-| 05 | 1 | - | - |
-| 06 | 2 | - | - |
-
-**Recent Trend:**
-
-- Last 5 plans: —
-- Trend: —
-
-*Updated after each plan completion*
-| Phase 02 P01 | 5 | 2 tasks | 2 files |
-| Phase 02-02 P02 | 15 | 2 tasks | 2 files |
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-11 — Milestone v1.1 started
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
 - Init: Validate existing 114 tools before expanding — prevents propagating wrong-path patterns
 - Init: Integration tests are read-only — live instance has real data
-- Init: Phase 5 (Integration) depends on Phase 2, not Phase 4 — can parallelize with Phase 4
 - [Phase 02]: Committed swagger-cache.json to repo for CI offline use (no live network required in tests)
 - [Phase 02-02]: sync_to_quickbooks bug fixed: URL /entity/id/synctoqbo -> /entity/synctoqbo (spec-correct), entityId sent in body
 - [Phase 02-02]: swagger-spec.test.ts confirms all 114 tool paths match Swagger spec — zero genuine path mismatches beyond sync_to_quickbooks
+- [v1.1]: RW API server-side bugs (masterid, rentalitemid column refs) make server-side filtering impossible for inventory/item browse — must filter client-side in MCP layer
 
 ### Pending Todos
 
@@ -80,11 +47,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- Phase 2: Swagger sub-spec URL discovery requires a live-instance spike first (parsing `SwaggerUIBundle` HTML config) — MEDIUM confidence, budget 30 min before committing to implementation
-- Phase 6: Exact paths for new tools (address management, change order status) must be looked up in spec before implementation
+- RW API browse endpoints for rentalinventory and item return 500 on any search filter (server-side DB bugs we cannot fix)
+- Unfiltered browse responses are ~2,200 chars/item — exceeds LLM context at even 25 items/page
 
 ## Session Continuity
 
-Last session: 2026-04-10T02:55:05.376Z
-Stopped at: Completed 02-02-PLAN.md (swagger spec test suite)
+Last session: 2026-04-11
+Stopped at: Milestone v1.1 initialization
 Resume file: None

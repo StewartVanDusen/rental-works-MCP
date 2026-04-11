@@ -12,26 +12,23 @@ Every MCP tool must call the correct API endpoint with the correct method, path,
 
 ### Validated
 
-- ✓ JWT authentication with auto-refresh — existing
-- ✓ Browse pattern with pagination, search, sort, filtering — existing
-- ✓ CRUD operations for core entities (inventory, orders, customers, deals, vendors) — existing
-- ✓ Report rendering, data export, and Excel export — existing
-- ✓ Checkout/checkin session workflow — existing
-- ✓ Error handling with known RW server-side issue detection — existing
-- ✓ Raw API escape hatches (raw_api_browse, raw_api_get, raw_api_post) — existing
+- ✓ JWT authentication with auto-refresh — v1.0
+- ✓ Browse pattern with pagination, search, sort, filtering — v1.0
+- ✓ CRUD operations for core entities (inventory, orders, customers, deals, vendors) — v1.0
+- ✓ Report rendering, data export, and Excel export — v1.0
+- ✓ Checkout/checkin session workflow — v1.0
+- ✓ Error handling with known RW server-side issue detection — v1.0
+- ✓ Raw API escape hatches (raw_api_browse, raw_api_get, raw_api_post) — v1.0
+- ✓ All 114 tool API paths validated against Swagger spec — v1.0
+- ✓ Unit tests for HTTP method, path, and request body — v1.0
+- ✓ Integration tests (read-only) against live API — v1.0
 
 ### Active
 
-- [ ] All ~114 existing tool API paths validated against Swagger spec
-- [ ] Missing `zod` dependency added to package.json
-- [ ] Every tool has a unit test verifying correct HTTP method, path, and request body
-- [ ] Integration tests that hit the live API (read-only: GET/browse only)
-- [ ] Bug fixes for any incorrect paths, methods, or body formats found during validation
-- [ ] Expanded coverage: high-value missing endpoints added (e.g. dashboard, activities, address management, inventory merge, change order status)
-- [ ] Error handling tests (API failures, auth failures, malformed responses)
-- [ ] Storefront category browsing path corrected (currently uses `/storefrontcatalog/browse`, Swagger shows `/storefront/catalog/{id}/categorytree`)
-- [ ] All checkout/checkin endpoint paths verified against warehouse-v1 Swagger spec
-- [ ] All invoice lifecycle paths verified (approve, process, void)
+- [ ] Client-side field selection for browse tools — callers specify which fields to return, reducing ~2,200 chars/item to ~100-200
+- [ ] Client-side search/filter in MCP layer — fetch unfiltered from API, apply search logic locally to work around broken RW server-side filters (masterid/rentalitemid DB column bugs)
+- [ ] Smarter inventory browse defaults — smaller page size, curated default field sets for inventory tools
+- [ ] Graceful fallback for known broken endpoints — detect specific 500 errors and automatically retry with client-side filtering
 
 ### Out of Scope
 
@@ -41,6 +38,16 @@ Every MCP tool must call the correct API endpoint with the correct method, path,
 - System admin endpoints (CreateNewSystem, etc.) — dangerous, shouldn't be in MCP
 - OAuth/Okta/Azure AD auth flows — current JWT auth is sufficient
 - Real-time features (webhooks, long-polling) — outside MCP server pattern
+
+## Current Milestone: v1.1 Inventory Browse Fix
+
+**Goal:** Make inventory search and browse usable for AI agents by adding client-side filtering and response trimming to work around broken RW API server-side filters.
+
+**Target features:**
+- Client-side field selection for browse responses
+- Client-side search/filter in MCP layer (workaround for broken API filters)
+- Smarter inventory browse defaults (smaller pages, curated field sets)
+- Graceful fallback on known broken endpoints (auto-retry with client-side filtering)
 
 ## Context
 
@@ -82,4 +89,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-04-09 after initialization*
+*Last updated: 2026-04-11 after milestone v1.1 started*
