@@ -12,13 +12,22 @@ import type {
 } from "../types/api.js";
 import { withClientSideFallback } from "./browse-helpers.js";
 
-const BASE_URL =
-  process.env.RENTALWORKS_BASE_URL ||
-  "";
+/**
+ * Base URL for the RentalWorks API. Normalized at module load:
+ *   - trailing slash stripped so `${BASE_URL}${path}` never produces `//`
+ *   - empty string left alone (lets `request()` fail loudly on missing config)
+ */
+const BASE_URL = (process.env.RENTALWORKS_BASE_URL || "").replace(/\/+$/, "");
 
 export class RentalWorksClient {
   private token: string | null = null;
   private tokenExpiry: number = 0;
+  /**
+   * In-flight authentication promise. When set, concurrent `ensureAuth()` calls
+   * await the same promise instead of each issuing their own POST `/jwt`. Reset
+   * via `.finally()` so a failed auth doesn't permanently lock subsequent calls.
+   */
+  private authPromise: Promise<JwtResponse> | null = null;
   private username: string;
   private password: string;
 
@@ -60,69 +69,62 @@ export class RentalWorksClient {
   }
 
   /**
-   * Ensure we have a valid token
+   * Ensure we have a valid token. Single-flight: concurrent calls during a
+   * stale-token window all await the same `/jwt` POST instead of racing.
    */
   private async ensureAuth(): Promise<string> {
-    if (!this.token || Date.now() >= this.tokenExpiry) {
-      await this.authenticate();
+    if (this.token && Date.now() < this.tokenExpiry) return this.token;
+    if (!this.authPromise) {
+      this.authPromise = this.authenticate().finally(() => {
+        this.authPromise = null;
+      });
     }
+    await this.authPromise;
     return this.token!;
   }
 
   /**
-   * Make an authenticated API request
+   * Make an authenticated API request.
+   *
+   * The `body` parameter is typed as a plain object (not pre-serialized) so
+   * we control the JSON.stringify boundary in one place — eliminates the
+   * "double-encoded body" foot-gun on 401/403 retry.
    */
   async request<T = unknown>(
     method: HttpMethod,
     path: string,
-    body?: unknown
+    body?: Record<string, unknown>
   ): Promise<T> {
-    const token = await this.ensureAuth();
     const url = `${BASE_URL}${path}`;
+    const serialized = body !== undefined ? JSON.stringify(body) : undefined;
 
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
+    const sendOnce = async (token: string): Promise<Response> =>
+      fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: serialized,
+      });
 
-    const res = await fetch(url, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    let token = await this.ensureAuth();
+    let res = await sendOnce(token);
+
+    // 401/403: clear token, re-authenticate, retry once
+    if (res.status === 401 || res.status === 403) {
+      this.token = null;
+      this.tokenExpiry = 0;
+      token = await this.ensureAuth();
+      res = await sendOnce(token);
+    }
+
+    const text = await res.text();
 
     if (!res.ok) {
-      // 401/403: clear token, re-authenticate, retry once
-      if (res.status === 401 || res.status === 403) {
-        this.token = null;
-        this.tokenExpiry = 0;
-        const retryToken = await this.ensureAuth();
-        headers.Authorization = `Bearer ${retryToken}`;
-        const retryRes = await fetch(url, {
-          method,
-          headers,
-          body: body ? JSON.stringify(body) : undefined,
-        });
-        if (!retryRes.ok) {
-          const retryText = await retryRes.text();
-          throw new Error(`API ${method} ${path} failed: ${retryRes.status} - ${retryText}`);
-        }
-        const retryText = await retryRes.text();
-        if (!retryText) return {} as T;
-        try {
-          return JSON.parse(retryText) as T;
-        } catch {
-          throw new Error(
-            `API ${method} ${path} failed: retry response was not valid JSON. Received: ${retryText.slice(0, 200)}`
-          );
-        }
-      }
-      const text = await res.text();
       throw new Error(`API ${method} ${path} failed: ${res.status} - ${text}`);
     }
 
-    // Some endpoints return empty responses
-    const text = await res.text();
     if (!text) return {} as T;
     try {
       return JSON.parse(text) as T;
@@ -143,14 +145,14 @@ export class RentalWorksClient {
   /**
    * POST request
    */
-  async post<T = unknown>(path: string, body?: unknown): Promise<T> {
+  async post<T = unknown>(path: string, body?: Record<string, unknown>): Promise<T> {
     return this.request<T>("POST", path, body);
   }
 
   /**
    * PUT request
    */
-  async put<T = unknown>(path: string, body?: unknown): Promise<T> {
+  async put<T = unknown>(path: string, body?: Record<string, unknown>): Promise<T> {
     return this.request<T>("PUT", path, body);
   }
 
@@ -228,37 +230,64 @@ export class RentalWorksClient {
     const fetchFn = (req: Record<string, unknown>) =>
       this.post<BrowseResponse<T>>(`/api/v1/${entity}/browse`, req);
 
+    // Thread the user-supplied search criteria through to withClientSideFallback
+    // so it can apply client-side filtering on retry. Without this, a search by
+    // an unsupported column would silently return every record after the
+    // server-side filter is stripped on the retry.
+    const sf = Array.isArray(body.searchfields) ? body.searchfields[0] : undefined;
+    const sv = Array.isArray(body.searchfieldvalues) ? body.searchfieldvalues[0] : undefined;
+    const so = Array.isArray(body.searchfieldoperators) ? body.searchfieldoperators[0] : undefined;
+
     let result: BrowseResponse<T>;
     try {
       result = await withClientSideFallback<T>(
         fetchFn as (req: Record<string, unknown>) => Promise<BrowseResponse<T>>,
-        body as unknown as Record<string, unknown>
+        body as Record<string, unknown>,
+        sf,
+        sv,
+        so,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes("Invalid column name")) {
         throw err;
       }
-      // POST browse is fundamentally broken for this entity — fall back to GET
+      // POST browse is fundamentally broken for this entity — fall back to GET.
+      // Defensive arithmetic: the live API has been observed to return
+      // PageSize: 0 / undefined on some entities; uncritical Math.ceil produces
+      // Infinity / NaN and pollutes downstream rendering. Default to the
+      // requested pageSize when the response one is missing.
       const params = new URLSearchParams();
-      params.set("pageno", String(body.pageno ?? 1));
-      params.set("pagesize", String(body.pagesize ?? 25));
+      const requestedPageNo = body.pageno ?? 1;
+      const requestedPageSize = body.pagesize ?? 25;
+      params.set("pageno", String(requestedPageNo));
+      params.set("pagesize", String(requestedPageSize));
       if (body.orderby) {
         const dir = body.orderbydirection || "asc";
         params.set("sort", `${body.orderby}${dir === "desc" ? " desc" : ""}`);
       }
       const raw = await this.get<{
-        Items: T[];
-        TotalItems: number;
-        PageNo: number;
-        PageSize: number;
+        Items?: T[];
+        TotalItems?: number;
+        PageNo?: number;
+        PageSize?: number;
       }>(`/api/v1/${entity}?${params.toString()}`);
+
+      const safeRows = raw.Items ?? [];
+      const safeTotal = typeof raw.TotalItems === "number" ? raw.TotalItems : safeRows.length;
+      const safePageSize =
+        typeof raw.PageSize === "number" && raw.PageSize > 0
+          ? raw.PageSize
+          : Number(requestedPageSize) || 25;
+      const safePageNo = typeof raw.PageNo === "number" ? raw.PageNo : Number(requestedPageNo) || 1;
+      const totalPages = safeTotal > 0 ? Math.ceil(safeTotal / safePageSize) : 0;
+
       return {
-        Rows: raw.Items,
-        TotalRows: raw.TotalItems,
-        PageNo: raw.PageNo,
-        PageSize: raw.PageSize,
-        TotalPages: Math.ceil(raw.TotalItems / raw.PageSize),
+        Rows: safeRows,
+        TotalRows: safeTotal,
+        PageNo: safePageNo,
+        PageSize: safePageSize,
+        TotalPages: totalPages,
       };
     }
 

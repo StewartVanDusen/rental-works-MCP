@@ -126,6 +126,8 @@ export function resolveFieldPreset(
  *   - "endswith": case-insensitive suffix match
  *   - "=": exact string equality (case-sensitive)
  *   - "<>": exact string inequality (case-sensitive)
+ *   - ">", ">=", "<", "<=": numeric comparison (both sides parsed via Number());
+ *      rows where the field cannot be coerced to a finite number are excluded
  *
  * Rows where the target field is null, undefined, or missing are excluded.
  *
@@ -165,6 +167,18 @@ export function applyClientFilter(
         return fieldStr === value;
       case "<>":
         return fieldStr !== value;
+      case ">":
+      case ">=":
+      case "<":
+      case "<=": {
+        const fieldNum = Number(fieldStr);
+        const valueNum = Number(value);
+        if (!Number.isFinite(fieldNum) || !Number.isFinite(valueNum)) return false;
+        if (operator === ">")  return fieldNum >  valueNum;
+        if (operator === ">=") return fieldNum >= valueNum;
+        if (operator === "<")  return fieldNum <  valueNum;
+        return fieldNum <= valueNum;
+      }
       default:
         // Unknown operator — exclude row (safe default)
         return false;
