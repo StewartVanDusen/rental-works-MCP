@@ -10,9 +10,9 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerBillingTools(server: McpServer) {
@@ -22,12 +22,7 @@ export function registerBillingTools(server: McpServer) {
     "browse_invoices",
     "Search and browse invoices. Filter by date, customer, deal, status, etc.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/invoice/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("invoice")
   );
 
   // ── Get Invoice ─────────────────────────────────────────────────────────
@@ -38,11 +33,11 @@ export function registerBillingTools(server: McpServer) {
     {
       invoiceId: z.string().describe("The invoice ID"),
     },
-    async ({ invoiceId }) => {
+    withErrorHandling(async ({ invoiceId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/invoice/${invoiceId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/invoice/${invoiceId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Invoice ──────────────────────────────────────────────────────
@@ -57,11 +52,11 @@ export function registerBillingTools(server: McpServer) {
       BillingStartDate: z.string().optional().describe("Billing period start (YYYY-MM-DD)"),
       BillingEndDate: z.string().optional().describe("Billing period end (YYYY-MM-DD)"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/invoice", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/invoice", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Approve Invoice ─────────────────────────────────────────────────────
@@ -72,11 +67,11 @@ export function registerBillingTools(server: McpServer) {
     {
       invoiceId: z.string().describe("The invoice ID to approve"),
     },
-    async ({ invoiceId }) => {
+    withErrorHandling(async ({ invoiceId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/invoice/${invoiceId}/approve`);
+      const data = await client.post<Record<string, unknown>>(`/api/v1/invoice/${invoiceId}/approve`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Process Invoice ─────────────────────────────────────────────────────
@@ -87,11 +82,11 @@ export function registerBillingTools(server: McpServer) {
     {
       invoiceId: z.string().describe("The invoice ID to process"),
     },
-    async ({ invoiceId }) => {
+    withErrorHandling(async ({ invoiceId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/invoice/${invoiceId}/process`);
+      const data = await client.post<Record<string, unknown>>(`/api/v1/invoice/${invoiceId}/process`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Void Invoice ────────────────────────────────────────────────────────
@@ -102,11 +97,11 @@ export function registerBillingTools(server: McpServer) {
     {
       invoiceId: z.string().describe("The invoice ID to void"),
     },
-    async ({ invoiceId }) => {
+    withErrorHandling(async ({ invoiceId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/invoice/${invoiceId}/void`);
+      const data = await client.post<Record<string, unknown>>(`/api/v1/invoice/${invoiceId}/void`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Billing ──────────────────────────────────────────────────────
@@ -115,12 +110,7 @@ export function registerBillingTools(server: McpServer) {
     "browse_billing",
     "Browse the billing module - shows orders ready for billing with date ranges and amounts.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/billing/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("billing")
   );
 
   // ── Billing: Create Estimate ────────────────────────────────────────────
@@ -133,11 +123,11 @@ export function registerBillingTools(server: McpServer) {
       BillingStartDate: z.string().optional().describe("Billing period start"),
       BillingEndDate: z.string().optional().describe("Billing period end"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/billing/createestimate", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/billing/createestimate", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Billing Worksheets ───────────────────────────────────────────
@@ -146,12 +136,7 @@ export function registerBillingTools(server: McpServer) {
     "browse_billing_worksheets",
     "Browse billing worksheets (pre-invoice review documents for complex billing).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/billingworksheet/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("billingworksheet")
   );
 
   // ── Browse Receipts (Payments) ──────────────────────────────────────────
@@ -160,12 +145,7 @@ export function registerBillingTools(server: McpServer) {
     "browse_receipts",
     "Browse payment receipts. Tracks payments received from customers.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/receipt/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("receipt")
   );
 
   // ── Get Receipt ─────────────────────────────────────────────────────────
@@ -176,11 +156,11 @@ export function registerBillingTools(server: McpServer) {
     {
       receiptId: z.string().describe("The receipt ID"),
     },
-    async ({ receiptId }) => {
+    withErrorHandling(async ({ receiptId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/receipt/${receiptId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/receipt/${receiptId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Vendor Invoices ──────────────────────────────────────────────
@@ -189,12 +169,7 @@ export function registerBillingTools(server: McpServer) {
     "browse_vendor_invoices",
     "Browse vendor invoices (bills received from vendors/sub-rentals).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/vendorinvoice/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("vendorinvoice")
   );
 
   // ── Get Vendor Invoice ──────────────────────────────────────────────────
@@ -205,10 +180,10 @@ export function registerBillingTools(server: McpServer) {
     {
       vendorInvoiceId: z.string().describe("The vendor invoice ID"),
     },
-    async ({ vendorInvoiceId }) => {
+    withErrorHandling(async ({ vendorInvoiceId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/vendorinvoice/${vendorInvoiceId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/vendorinvoice/${vendorInvoiceId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 }

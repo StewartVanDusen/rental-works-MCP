@@ -8,10 +8,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
+import type { BrowseResponse } from "../types/api.js";
 import {
   browseSchema,
   buildBrowseRequest,
   formatBrowseResult,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerReportTools(server: McpServer) {
@@ -39,15 +41,15 @@ export function registerReportTools(server: McpServer) {
       OfficeLocationId: z.string().optional().describe("Filter by office location ID"),
       FromDate: z.string().optional().describe("Start date filter (YYYY-MM-DD)"),
       ToDate: z.string().optional().describe("End date filter (YYYY-MM-DD)"),
-      IncludeSubHeadingsAndSubTotals: z.boolean().optional().default(true).describe("Include sub-headings"),
+      IncludeSubHeadingsAndSubTotals: z.coerce.boolean().optional().default(true).describe("Include sub-headings"),
     },
-    async ({ reportName, ...params }) => {
+    withErrorHandling(async ({ reportName, ...params }) => {
       const client = getClient();
       const endpoint = `/api/v1/${reportName.toLowerCase()}`;
       // Most reports use POST to render with parameters
-      const data = await client.post(`${endpoint}/render`, params);
+      const data = await client.post<Record<string, unknown>>(`${endpoint}/render`, params);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Report Data ──────────────────────────────────────────────────
@@ -59,13 +61,13 @@ export function registerReportTools(server: McpServer) {
       reportName: z.string().describe("Report module name (e.g. 'DealOutstandingItemsReport')"),
       ...browseSchema,
     },
-    async ({ reportName, ...args }) => {
+    withErrorHandling(async ({ reportName, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
       const endpoint = `/api/v1/${reportName.toLowerCase()}/runreport`;
-      const data = await client.post(endpoint, request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>(endpoint, request);
+      return { content: [{ type: "text", text: formatBrowseResult(data as unknown as BrowseResponse) }] };
+    })
   );
 
   // ── Export Report to Excel ──────────────────────────────────────────────
@@ -77,13 +79,13 @@ export function registerReportTools(server: McpServer) {
       reportName: z.string().describe("Report module name"),
       ...browseSchema,
     },
-    async ({ reportName, ...args }) => {
+    withErrorHandling(async ({ reportName, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
       const endpoint = `/api/v1/${reportName.toLowerCase()}/exportexcelxlsx`;
-      const data = await client.post(endpoint, request);
+      const data = await client.post<Record<string, unknown>>(endpoint, request);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── AR Aging Report ─────────────────────────────────────────────────────
@@ -96,11 +98,11 @@ export function registerReportTools(server: McpServer) {
       CustomerId: z.string().optional().describe("Filter by specific customer"),
       AsOfDate: z.string().optional().describe("Aging as-of date (YYYY-MM-DD, default: today)"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/aragingreport/render", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/aragingreport/render", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Late Returns Report ─────────────────────────────────────────────────
@@ -113,11 +115,11 @@ export function registerReportTools(server: McpServer) {
       OfficeLocationId: z.string().optional().describe("Filter by office location"),
       AsOfDate: z.string().optional().describe("Check late as-of date (YYYY-MM-DD)"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/latereturnsreport/render", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/latereturnsreport/render", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Availability Conflicts ──────────────────────────────────────────────
@@ -130,11 +132,11 @@ export function registerReportTools(server: McpServer) {
       FromDate: z.string().optional().describe("Start date range"),
       ToDate: z.string().optional().describe("End date range"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/availabilityconflicts/conflicts", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/availabilityconflicts/conflicts", request);
+      return { content: [{ type: "text", text: formatBrowseResult(data as unknown as BrowseResponse) }] };
+    })
   );
 }

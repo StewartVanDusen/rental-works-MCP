@@ -7,20 +7,27 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
-import { formatEntity } from "../utils/tool-helpers.js";
+import {
+  browseSchema,
+  browseTool,
+  formatEntity,
+  withErrorHandling,
+} from "../utils/tool-helpers.js";
 
 export function registerStorefrontTools(server: McpServer) {
   // ── Storefront: Browse Catalog ──────────────────────────────────────────
+  // NOTE: this uses GET /api/v1/storefront/catalog (a list endpoint), NOT a
+  // /browse endpoint. Preserved as-is — only wrapped with withErrorHandling.
 
   server.tool(
     "storefront_browse_catalog",
     "List available storefront catalogs.",
     {},
-    async () => {
+    withErrorHandling(async () => {
       const client = getClient();
-      const data = await client.get("/api/v1/storefront/catalog");
+      const data = await client.get<Record<string, unknown>>("/api/v1/storefront/catalog");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Storefront: Get Item Details ────────────────────────────────────────
@@ -35,31 +42,22 @@ export function registerStorefrontTools(server: McpServer) {
       fromDate: z.string().describe("Start date (YYYY-MM-DD)"),
       toDate: z.string().describe("End date (YYYY-MM-DD)"),
     },
-    async ({ productId, warehouseId, locationId, fromDate, toDate }) => {
+    withErrorHandling(async ({ productId, warehouseId, locationId, fromDate, toDate }) => {
       const client = getClient();
-      const data = await client.get(
+      const data = await client.get<Record<string, unknown>>(
         `/api/v1/storefront/product/${productId}/warehouseid/${warehouseId}/locationid/${locationId}/fromdate/${fromDate}/todate/${toDate}`
       );
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Storefront: Browse Categories ───────────────────────────────────────
+  // Uses POST /api/v1/storefrontcatalog/browse — the standard browse path.
 
   server.tool(
     "storefront_browse_categories",
     "Browse the storefront catalog categories available to customers.",
-    {
-      page: z.number().optional().default(1),
-      pageSize: z.number().optional().default(50),
-    },
-    async (args) => {
-      const client = getClient();
-      const data = await client.post("/api/v1/storefrontcatalog/browse", {
-        pageno: args.page,
-        pagesize: args.pageSize,
-      });
-      return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    browseSchema,
+    browseTool("storefrontcatalog")
   );
 }

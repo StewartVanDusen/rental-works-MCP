@@ -9,9 +9,9 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerAddressTools(server: McpServer) {
@@ -21,12 +21,7 @@ export function registerAddressTools(server: McpServer) {
     "browse_addresses",
     "Search and browse address records.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/address/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("address")
   );
 
   // ── Get Address ─────────────────────────────────────────────────────────
@@ -37,11 +32,11 @@ export function registerAddressTools(server: McpServer) {
     {
       addressId: z.string().describe("The address ID"),
     },
-    async ({ addressId }) => {
+    withErrorHandling(async ({ addressId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/address/${addressId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/address/${addressId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Address ──────────────────────────────────────────────────────
@@ -59,11 +54,11 @@ export function registerAddressTools(server: McpServer) {
       Phone: z.string().optional().describe("Phone number"),
       Email: z.string().optional().describe("Email address"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/address", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/address", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Update Address ──────────────────────────────────────────────────────
@@ -82,11 +77,11 @@ export function registerAddressTools(server: McpServer) {
       Phone: z.string().optional().describe("Phone number"),
       Email: z.string().optional().describe("Email address"),
     },
-    async ({ AddressId, ...updates }) => {
+    withErrorHandling(async ({ AddressId, ...updates }) => {
       const client = getClient();
-      const data = await client.put(`/api/v1/address/${AddressId}`, updates);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.put<Record<string, unknown>>(`/api/v1/address/${AddressId}`, updates);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Delete Address ──────────────────────────────────────────────────────
@@ -97,10 +92,10 @@ export function registerAddressTools(server: McpServer) {
     {
       addressId: z.string().describe("The address ID to delete"),
     },
-    async ({ addressId }) => {
+    withErrorHandling(async ({ addressId }) => {
       const client = getClient();
       await client.delete(`/api/v1/address/${addressId}`);
       return { content: [{ type: "text", text: `Address ${addressId} deleted.` }] };
-    }
+    })
   );
 }

@@ -9,9 +9,9 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerVendorTools(server: McpServer) {
@@ -21,12 +21,7 @@ export function registerVendorTools(server: McpServer) {
     "browse_vendors",
     "Search and browse vendors (sub-rental houses, suppliers, service providers).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/vendor/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("vendor")
   );
 
   // ── Get Vendor ──────────────────────────────────────────────────────────
@@ -37,11 +32,11 @@ export function registerVendorTools(server: McpServer) {
     {
       vendorId: z.string().describe("The vendor ID"),
     },
-    async ({ vendorId }) => {
+    withErrorHandling(async ({ vendorId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/vendor/${vendorId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/vendor/${vendorId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Vendor ───────────────────────────────────────────────────────
@@ -58,11 +53,11 @@ export function registerVendorTools(server: McpServer) {
       Phone: z.string().optional().describe("Phone number"),
       Email: z.string().optional().describe("Email address"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/vendor", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/vendor", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Purchase Orders ──────────────────────────────────────────────
@@ -71,12 +66,7 @@ export function registerVendorTools(server: McpServer) {
     "browse_purchase_orders",
     "Search and browse purchase orders (sub-rentals and vendor purchases).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/purchaseorder/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("purchaseorder")
   );
 
   // ── Get Purchase Order ──────────────────────────────────────────────────
@@ -87,11 +77,11 @@ export function registerVendorTools(server: McpServer) {
     {
       purchaseOrderId: z.string().describe("The purchase order ID"),
     },
-    async ({ purchaseOrderId }) => {
+    withErrorHandling(async ({ purchaseOrderId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/purchaseorder/${purchaseOrderId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/purchaseorder/${purchaseOrderId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Purchase Order ───────────────────────────────────────────────
@@ -105,11 +95,11 @@ export function registerVendorTools(server: McpServer) {
       OrderId: z.string().optional().describe("Associated order ID"),
       Description: z.string().optional().describe("PO description"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/purchaseorder", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/purchaseorder", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── PO Approval Flow ───────────────────────────────────────────────────
@@ -120,11 +110,11 @@ export function registerVendorTools(server: McpServer) {
     {
       purchaseOrderId: z.string().describe("The PO ID to submit"),
     },
-    async ({ purchaseOrderId }) => {
+    withErrorHandling(async ({ purchaseOrderId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/purchaseorder/submitforapproval", { PurchaseOrderId: purchaseOrderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   server.tool(
@@ -133,11 +123,11 @@ export function registerVendorTools(server: McpServer) {
     {
       purchaseOrderId: z.string().describe("The PO ID to approve"),
     },
-    async ({ purchaseOrderId }) => {
+    withErrorHandling(async ({ purchaseOrderId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/purchaseorder/firstapprove", { PurchaseOrderId: purchaseOrderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   server.tool(
@@ -148,7 +138,7 @@ export function registerVendorTools(server: McpServer) {
       rejectReasonNote: z.string().optional().describe("Rejection reason note"),
       rejectReasonId: z.string().optional().describe("Rejection reason ID"),
     },
-    async ({ purchaseOrderId, rejectReasonNote, rejectReasonId }) => {
+    withErrorHandling(async ({ purchaseOrderId, rejectReasonNote, rejectReasonId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/purchaseorder/reject", {
         PurchaseOrderId: purchaseOrderId,
@@ -156,6 +146,6 @@ export function registerVendorTools(server: McpServer) {
         ...(rejectReasonId ? { RejectReasonId: rejectReasonId } : {}),
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 }

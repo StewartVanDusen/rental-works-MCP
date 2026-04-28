@@ -10,9 +10,12 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
+  browseTool,
   buildBrowseRequest,
   formatBrowseResult,
   formatEntity,
+  resolveBrowseFields,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerOrderTools(server: McpServer) {
@@ -25,12 +28,7 @@ export function registerOrderTools(server: McpServer) {
       ...browseSchema,
       statusFilter: z.string().optional().describe("Filter by order status"),
     },
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/order/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("order")
   );
 
   // ── Get Order Details ───────────────────────────────────────────────────
@@ -41,11 +39,11 @@ export function registerOrderTools(server: McpServer) {
     {
       orderId: z.string().describe("The order ID"),
     },
-    async ({ orderId }) => {
+    withErrorHandling(async ({ orderId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/order/${orderId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/order/${orderId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Get Order Extended Details ──────────────────────────────────────────
@@ -56,11 +54,11 @@ export function registerOrderTools(server: McpServer) {
     {
       orderId: z.string().describe("The order ID"),
     },
-    async ({ orderId }) => {
+    withErrorHandling(async ({ orderId }) => {
       const client = getClient();
       const data = await client.get(`/api/v1/order/${orderId}/orderdetails`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Create Order ────────────────────────────────────────────────────────
@@ -81,11 +79,11 @@ export function registerOrderTools(server: McpServer) {
       ProjectManagerId: z.string().optional().describe("Project manager user ID"),
       Location: z.string().optional().describe("Event/delivery location"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/order", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/order", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Update Order ────────────────────────────────────────────────────────
@@ -103,11 +101,11 @@ export function registerOrderTools(server: McpServer) {
       AgentId: z.string().optional().describe("Updated agent ID"),
       ProjectManagerId: z.string().optional().describe("Updated PM ID"),
     },
-    async ({ OrderId, ...updates }) => {
+    withErrorHandling(async ({ OrderId, ...updates }) => {
       const client = getClient();
-      const data = await client.put(`/api/v1/order/${OrderId}`, updates);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.put<Record<string, unknown>>(`/api/v1/order/${OrderId}`, updates);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Delete Order ────────────────────────────────────────────────────────
@@ -118,11 +116,11 @@ export function registerOrderTools(server: McpServer) {
     {
       orderId: z.string().describe("The order ID to cancel"),
     },
-    async ({ orderId }) => {
+    withErrorHandling(async ({ orderId }) => {
       const client = getClient();
       await client.post(`/api/v1/order/cancel/${orderId}`);
       return { content: [{ type: "text", text: `Order ${orderId} cancelled.` }] };
-    }
+    })
   );
 
   // ── Browse Order Items ──────────────────────────────────────────────────
@@ -134,15 +132,18 @@ export function registerOrderTools(server: McpServer) {
       ...browseSchema,
       orderId: z.string().describe("The parent order ID to browse items for"),
     },
-    async ({ orderId, ...args }) => {
+    withErrorHandling(async ({ orderId, ...args }) => {
       const client = getClient();
       const request = {
         ...buildBrowseRequest(args),
         uniqueids: { OrderId: orderId },
       };
-      const data = await client.post("/api/v1/orderitem/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+      const data = await client.browse("orderitem", request);
+      const fields = resolveBrowseFields("orderitem", args);
+      return {
+        content: [{ type: "text", text: formatBrowseResult(data, fields ? { fields } : undefined) }],
+      };
+    })
   );
 
   // ── Add Item to Order ───────────────────────────────────────────────────
@@ -153,15 +154,15 @@ export function registerOrderTools(server: McpServer) {
     {
       OrderId: z.string().describe("The order to add the item to"),
       InventoryId: z.string().describe("The inventory item ID to add"),
-      QuantityOrdered: z.number().optional().describe("Quantity to order (default: 1)"),
-      Rate: z.number().optional().describe("Override rental rate"),
-      DaysPerWeek: z.number().optional().describe("Days per week for billing"),
+      QuantityOrdered: z.coerce.number().optional().describe("Quantity to order (default: 1)"),
+      Rate: z.coerce.number().optional().describe("Override rental rate"),
+      DaysPerWeek: z.coerce.number().optional().describe("Days per week for billing"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/orderitem", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/orderitem", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Invoice from Order ───────────────────────────────────────────
@@ -172,11 +173,11 @@ export function registerOrderTools(server: McpServer) {
     {
       orderId: z.string().describe("The order ID to create an invoice for"),
     },
-    async ({ orderId }) => {
+    withErrorHandling(async ({ orderId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/order/createinvoice", { OrderId: orderId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Copy Order to New Order ─────────────────────────────────────────────
@@ -187,11 +188,11 @@ export function registerOrderTools(server: McpServer) {
     {
       orderId: z.string().describe("The source order ID to copy"),
     },
-    async ({ orderId }) => {
+    withErrorHandling(async ({ orderId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/order/${orderId}/copytoorder`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>(`/api/v1/order/${orderId}/copytoorder`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Quotes ───────────────────────────────────────────────────────
@@ -200,12 +201,7 @@ export function registerOrderTools(server: McpServer) {
     "browse_quotes",
     "Search and browse quotes (pre-order proposals sent to customers).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/quote/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("quote")
   );
 
   // ── Get Quote ───────────────────────────────────────────────────────────
@@ -216,11 +212,11 @@ export function registerOrderTools(server: McpServer) {
     {
       quoteId: z.string().describe("The quote ID"),
     },
-    async ({ quoteId }) => {
+    withErrorHandling(async ({ quoteId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/quote/${quoteId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/quote/${quoteId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Quote ────────────────────────────────────────────────────────
@@ -236,11 +232,11 @@ export function registerOrderTools(server: McpServer) {
       EstimatedStopDate: z.string().optional().describe("Estimated stop date"),
       Location: z.string().optional().describe("Event location"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/quote", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/quote", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Convert Quote to Order ──────────────────────────────────────────────
@@ -253,7 +249,7 @@ export function registerOrderTools(server: McpServer) {
       locationId: z.string().describe("Location ID for the new order"),
       warehouseId: z.string().describe("Warehouse ID for the new order"),
     },
-    async ({ quoteId, locationId, warehouseId }) => {
+    withErrorHandling(async ({ quoteId, locationId, warehouseId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/quote/createorder", {
         QuoteId: quoteId,
@@ -261,7 +257,7 @@ export function registerOrderTools(server: McpServer) {
         WarehouseId: warehouseId,
       });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Apply Discount to Order ─────────────────────────────────────────────
@@ -271,15 +267,15 @@ export function registerOrderTools(server: McpServer) {
     "Apply a bottom-line discount percentage to an entire order.",
     {
       orderId: z.string().describe("The order ID"),
-      discountPercent: z.number().describe("Discount percentage (e.g. 10 for 10%)"),
+      discountPercent: z.coerce.number().describe("Discount percentage (e.g. 10 for 10%)"),
     },
-    async ({ orderId, discountPercent }) => {
+    withErrorHandling(async ({ orderId, discountPercent }) => {
       const client = getClient();
       const data = await client.post(
         "/api/v1/order/applybottomlinediscountpercent",
         { OrderId: orderId, DiscountPercent: discountPercent }
       );
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 }

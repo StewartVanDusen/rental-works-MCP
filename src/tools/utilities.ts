@@ -10,9 +10,10 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
+  browseTool,
   buildBrowseRequest,
   formatBrowseResult,
-  formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerUtilityTools(server: McpServer) {
@@ -22,12 +23,7 @@ export function registerUtilityTools(server: McpServer) {
     "browse_inventory_purchase_sessions",
     "Browse inventory purchase sessions — tracks items being purchased/restocked.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/inventorypurchasesession/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("inventorypurchasesession")
   );
 
   // ── Change ICode Utility ────────────────────────────────────────────────
@@ -39,11 +35,11 @@ export function registerUtilityTools(server: McpServer) {
       InventoryId: z.string().describe("The inventory item ID"),
       NewICode: z.string().describe("The new ICode to assign"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/changeicodeutility/changeicode", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/changeicodeutility/changeicode", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Assign Barcodes ─────────────────────────────────────────────────────
@@ -53,13 +49,13 @@ export function registerUtilityTools(server: McpServer) {
     "Assign barcodes to inventory items or view barcode assignments.",
     {
       InventoryId: z.string().describe("Inventory item to assign barcodes to"),
-      Quantity: z.number().optional().describe("Number of barcodes to generate"),
+      Quantity: z.coerce.number().optional().describe("Number of barcodes to generate"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/assignbarcodes/assignbarcodes", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/assignbarcodes/assignbarcodes", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Label Designs ────────────────────────────────────────────────
@@ -68,12 +64,7 @@ export function registerUtilityTools(server: McpServer) {
     "browse_label_designs",
     "Browse label designs for printing barcode labels, asset tags, etc.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/labeldesign/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("labeldesign")
   );
 
   // ── AI Assistant Utility ────────────────────────────────────────────────
@@ -84,11 +75,11 @@ export function registerUtilityTools(server: McpServer) {
     {
       query: z.string().describe("The question or request for the AI assistant"),
     },
-    async ({ query }) => {
+    withErrorHandling(async ({ query }) => {
       const client = getClient();
-      const data = await client.post("/api/v1/aiassistantutility/ask", { Query: query });
+      const data = await client.post<Record<string, unknown>>("/api/v1/aiassistantutility/ask", { Query: query });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Generic Entity Operations ───────────────────────────────────────────
@@ -102,12 +93,12 @@ export function registerUtilityTools(server: McpServer) {
       entity: z.string().describe("API entity path segment (e.g. 'rentalinventory', 'order', 'customer')"),
       ...browseSchema,
     },
-    async ({ entity, ...args }) => {
+    withErrorHandling(async ({ entity, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
       const data = await client.browse(entity, request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+      return { content: [{ type: "text", text: formatBrowseResult(data) }] };
+    })
   );
 
   server.tool(
@@ -116,11 +107,11 @@ export function registerUtilityTools(server: McpServer) {
     {
       path: z.string().describe("Full API path (e.g. '/api/v1/rentalinventory/abc123')"),
     },
-    async ({ path }) => {
+    withErrorHandling(async ({ path }) => {
       const client = getClient();
-      const data = await client.get(path);
+      const data = await client.get<Record<string, unknown>>(path);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   server.tool(
@@ -130,12 +121,12 @@ export function registerUtilityTools(server: McpServer) {
       path: z.string().describe("Full API path (e.g. '/api/v1/order/abc123/createinvoice')"),
       body: z.string().optional().describe("JSON body string to send"),
     },
-    async ({ path, body }) => {
+    withErrorHandling(async ({ path, body }) => {
       const client = getClient();
       const parsedBody = body ? JSON.parse(body) : {};
-      const data = await client.post(path, parsedBody);
+      const data = await client.post<Record<string, unknown>>(path, parsedBody);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Change Order Status Utility ────────────────────────────────────────
@@ -147,11 +138,11 @@ export function registerUtilityTools(server: McpServer) {
       OrderId: z.string().describe("The order ID to change status for"),
       StatusId: z.string().describe("The new order status ID"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/changeorderstatus/changestatus", args);
+      const data = await client.post<Record<string, unknown>>("/api/v1/changeorderstatus/changestatus", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── QuickBooks Sync ─────────────────────────────────────────────────────
@@ -164,10 +155,10 @@ export function registerUtilityTools(server: McpServer) {
         .describe("Type of entity to sync"),
       entityId: z.string().describe("The entity ID to sync"),
     },
-    async ({ entityType, entityId }) => {
+    withErrorHandling(async ({ entityType, entityId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/${entityType}/synctoqbo`, { Id: entityId });
+      const data = await client.post<Record<string, unknown>>(`/api/v1/${entityType}/synctoqbo`, { Id: entityId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 }

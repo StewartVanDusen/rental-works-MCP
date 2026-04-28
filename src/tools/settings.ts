@@ -10,9 +10,11 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
+  browseTool,
   buildBrowseRequest,
   formatBrowseResult,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerSettingsTools(server: McpServer) {
@@ -22,12 +24,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_warehouses",
     "Browse all warehouses/locations configured in the system.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/warehouse/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("warehouse")
   );
 
   // ── Get Warehouse ───────────────────────────────────────────────────────
@@ -38,11 +35,11 @@ export function registerSettingsTools(server: McpServer) {
     {
       warehouseId: z.string().describe("The warehouse ID"),
     },
-    async ({ warehouseId }) => {
+    withErrorHandling(async ({ warehouseId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/warehouse/${warehouseId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/warehouse/${warehouseId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Rental Categories ────────────────────────────────────────────
@@ -51,12 +48,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_rental_categories",
     "Browse rental inventory categories (e.g. Lighting, Audio, Video, Staging).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/rentalcategory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("rentalcategory")
   );
 
   // ── Browse Sales Categories ─────────────────────────────────────────────
@@ -65,12 +57,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_sales_categories",
     "Browse sales inventory categories.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/salescategory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("salescategory")
   );
 
   // ── Browse Order Types ──────────────────────────────────────────────────
@@ -79,12 +66,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_order_types",
     "Browse configured order types (e.g. Rental, Sales, Internal, etc.).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/ordertype/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("ordertype")
   );
 
   // ── Browse Crews ────────────────────────────────────────────────────────
@@ -93,12 +75,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_crews",
     "Browse crew members (labor/staff that can be assigned to orders).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/crew/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("crew")
   );
 
   // ── Get Crew ────────────────────────────────────────────────────────────
@@ -109,11 +86,11 @@ export function registerSettingsTools(server: McpServer) {
     {
       crewId: z.string().describe("The crew member ID"),
     },
-    async ({ crewId }) => {
+    withErrorHandling(async ({ crewId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/crew/${crewId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/crew/${crewId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Discount Items ───────────────────────────────────────────────
@@ -122,12 +99,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_discount_items",
     "Browse discount configurations and templates.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/discountitem/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("discountitem")
   );
 
   // ── Browse Templates ────────────────────────────────────────────────────
@@ -136,12 +108,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_templates",
     "Browse order templates (pre-configured item lists for common setups).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/template/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("template")
   );
 
   // ── Browse Labor Rates ──────────────────────────────────────────────────
@@ -150,12 +117,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_labor_rates",
     "Browse configured labor rate categories and their rates.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/laborrate/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("laborrate")
   );
 
   // ── Get Default Settings ────────────────────────────────────────────────
@@ -164,11 +126,11 @@ export function registerSettingsTools(server: McpServer) {
     "get_default_settings",
     "Get the system's default settings (default warehouse, office, billing settings, etc.).",
     {},
-    async () => {
+    withErrorHandling(async () => {
       const client = getClient();
-      const data = await client.get("/api/v1/defaultsettings");
+      const data = await client.get<Record<string, unknown>>("/api/v1/defaultsettings");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Office Locations ─────────────────────────────────────────────
@@ -177,12 +139,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_office_locations",
     "Browse configured office locations.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/officelocation/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("officelocation")
   );
 
   // ── Browse GL Accounts ──────────────────────────────────────────────────
@@ -191,12 +148,7 @@ export function registerSettingsTools(server: McpServer) {
     "browse_gl_accounts",
     "Browse general ledger accounts configured in the system.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/glaccount/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("glaccount")
   );
 
   // ── Generic Settings Browse ─────────────────────────────────────────────
@@ -213,11 +165,11 @@ export function registerSettingsTools(server: McpServer) {
       entityName: z.string().describe("Settings entity name (e.g. 'crew', 'warehouse', 'rentalcategory')"),
       ...browseSchema,
     },
-    async ({ entityName, ...args }) => {
+    withErrorHandling(async ({ entityName, ...args }) => {
       const client = getClient();
       const request = buildBrowseRequest(args);
-      const data = await client.post(`/api/v1/${entityName.toLowerCase()}/browse`, request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+      const data = await client.browse(entityName.toLowerCase(), request);
+      return { content: [{ type: "text", text: formatBrowseResult(data) }] };
+    })
   );
 }

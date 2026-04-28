@@ -10,9 +10,9 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerCustomerTools(server: McpServer) {
@@ -22,12 +22,7 @@ export function registerCustomerTools(server: McpServer) {
     "browse_customers",
     "Search and browse customers. Filter by name, number, city, credit status, etc.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/customer/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("customer")
   );
 
   // ── Get Customer ────────────────────────────────────────────────────────
@@ -38,11 +33,11 @@ export function registerCustomerTools(server: McpServer) {
     {
       customerId: z.string().describe("The customer ID"),
     },
-    async ({ customerId }) => {
+    withErrorHandling(async ({ customerId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/customer/${customerId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/customer/${customerId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Customer ─────────────────────────────────────────────────────
@@ -60,13 +55,13 @@ export function registerCustomerTools(server: McpServer) {
       Country: z.string().optional().describe("Country"),
       Phone: z.string().optional().describe("Phone number"),
       Email: z.string().optional().describe("Email address"),
-      CreditLimit: z.number().optional().describe("Credit limit amount"),
+      CreditLimit: z.coerce.number().optional().describe("Credit limit amount"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/customer", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/customer", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Update Customer ─────────────────────────────────────────────────────
@@ -83,13 +78,13 @@ export function registerCustomerTools(server: McpServer) {
       ZipCode: z.string().optional(),
       Phone: z.string().optional(),
       Email: z.string().optional(),
-      Inactive: z.boolean().optional().describe("Set active/inactive"),
+      Inactive: z.coerce.boolean().optional().describe("Set active/inactive"),
     },
-    async ({ CustomerId, ...updates }) => {
+    withErrorHandling(async ({ CustomerId, ...updates }) => {
       const client = getClient();
-      const data = await client.put(`/api/v1/customer/${CustomerId}`, updates);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.put<Record<string, unknown>>(`/api/v1/customer/${CustomerId}`, updates);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Contacts ─────────────────────────────────────────────────────
@@ -98,12 +93,7 @@ export function registerCustomerTools(server: McpServer) {
     "browse_contacts",
     "Search and browse contacts (people associated with customers).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/contact/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("contact")
   );
 
   // ── Get Contact ─────────────────────────────────────────────────────────
@@ -114,11 +104,11 @@ export function registerCustomerTools(server: McpServer) {
     {
       contactId: z.string().describe("The contact ID"),
     },
-    async ({ contactId }) => {
+    withErrorHandling(async ({ contactId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/contact/${contactId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/contact/${contactId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Contact ──────────────────────────────────────────────────────
@@ -135,11 +125,11 @@ export function registerCustomerTools(server: McpServer) {
       OfficePhone: z.string().optional().describe("Office phone"),
       MobilePhone: z.string().optional().describe("Mobile phone"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/contact", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/contact", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Deals ────────────────────────────────────────────────────────
@@ -148,12 +138,7 @@ export function registerCustomerTools(server: McpServer) {
     "browse_deals",
     "Search and browse deals (events/shows/projects that orders are organized under).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/deal/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("deal")
   );
 
   // ── Get Deal ────────────────────────────────────────────────────────────
@@ -164,11 +149,11 @@ export function registerCustomerTools(server: McpServer) {
     {
       dealId: z.string().describe("The deal ID"),
     },
-    async ({ dealId }) => {
+    withErrorHandling(async ({ dealId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/deal/${dealId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/deal/${dealId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Deal ─────────────────────────────────────────────────────────
@@ -186,11 +171,11 @@ export function registerCustomerTools(server: McpServer) {
       EstimatedEndDate: z.string().optional().describe("Estimated end date"),
       AgentId: z.string().optional().describe("Sales agent ID"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/deal", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/deal", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Update Deal ─────────────────────────────────────────────────────────
@@ -206,11 +191,11 @@ export function registerCustomerTools(server: McpServer) {
       EstimatedStartDate: z.string().optional(),
       EstimatedEndDate: z.string().optional(),
     },
-    async ({ DealId, ...updates }) => {
+    withErrorHandling(async ({ DealId, ...updates }) => {
       const client = getClient();
-      const data = await client.put(`/api/v1/deal/${DealId}`, updates);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.put<Record<string, unknown>>(`/api/v1/deal/${DealId}`, updates);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Projects ─────────────────────────────────────────────────────
@@ -219,12 +204,7 @@ export function registerCustomerTools(server: McpServer) {
     "browse_projects",
     "Search and browse projects (larger containers that group multiple deals).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/project/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("project")
   );
 
   // ── Get Project ─────────────────────────────────────────────────────────
@@ -235,10 +215,10 @@ export function registerCustomerTools(server: McpServer) {
     {
       projectId: z.string().describe("The project ID"),
     },
-    async ({ projectId }) => {
+    withErrorHandling(async ({ projectId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/project/${projectId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/project/${projectId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 }

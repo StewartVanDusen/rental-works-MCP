@@ -10,9 +10,9 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
 
 export function registerContractTools(server: McpServer) {
@@ -22,12 +22,7 @@ export function registerContractTools(server: McpServer) {
     "browse_contracts",
     "Browse contracts (shipping/receiving documents created during check-out and check-in).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/contract/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("contract")
   );
 
   // ── Get Contract ────────────────────────────────────────────────────────
@@ -38,11 +33,11 @@ export function registerContractTools(server: McpServer) {
     {
       contractId: z.string().describe("The contract ID"),
     },
-    async ({ contractId }) => {
+    withErrorHandling(async ({ contractId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/contract/${contractId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/contract/${contractId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Get Contract Details ────────────────────────────────────────────────
@@ -53,11 +48,11 @@ export function registerContractTools(server: McpServer) {
     {
       contractId: z.string().describe("The contract ID"),
     },
-    async ({ contractId }) => {
+    withErrorHandling(async ({ contractId }) => {
       const client = getClient();
       const data = await client.get(`/api/v1/contract/${contractId}/contractdetails`);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-Out: Start Session ────────────────────────────────────────────
@@ -69,11 +64,11 @@ export function registerContractTools(server: McpServer) {
       OrderId: z.string().describe("The order ID to check out"),
       WarehouseId: z.string().optional().describe("Warehouse to check out from"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkout/startcheckoutcontract", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-Out: Stage Item ───────────────────────────────────────────────
@@ -85,11 +80,11 @@ export function registerContractTools(server: McpServer) {
       SessionId: z.string().describe("Active check-out session ID"),
       Code: z.string().describe("Barcode or serial number to stage"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkout/stageitem", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-Out: Stage All ────────────────────────────────────────────────
@@ -100,11 +95,11 @@ export function registerContractTools(server: McpServer) {
     {
       SessionId: z.string().describe("Active check-out session ID"),
     },
-    async ({ SessionId }) => {
+    withErrorHandling(async ({ SessionId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkout/checkoutallstaged", { SessionId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-Out: Complete Contract ────────────────────────────────────────
@@ -115,11 +110,11 @@ export function registerContractTools(server: McpServer) {
     {
       SessionId: z.string().describe("Active check-out session ID"),
     },
-    async ({ SessionId }) => {
+    withErrorHandling(async ({ SessionId }) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkout/completecheckoutcontract", { SessionId });
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-Out: Browse Staging ───────────────────────────────────────────
@@ -128,12 +123,7 @@ export function registerContractTools(server: McpServer) {
     "browse_checked_out_items",
     "Browse items currently checked out across orders. Shows what equipment is out in the field.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/checkedoutitem/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("checkedoutitem")
   );
 
   // ── Check-In: Start Session ─────────────────────────────────────────────
@@ -145,11 +135,11 @@ export function registerContractTools(server: McpServer) {
       ContractId: z.string().optional().describe("Contract ID to check in against"),
       OrderId: z.string().optional().describe("Order ID to check in against"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkin/startsession", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Check-In: Scan Item ─────────────────────────────────────────────────
@@ -161,11 +151,11 @@ export function registerContractTools(server: McpServer) {
       SessionId: z.string().describe("Active check-in session ID"),
       Code: z.string().describe("Barcode or serial number being returned"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
       const data = await client.post("/api/v1/checkin/checkinitem", args);
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Browse Transfer Orders ──────────────────────────────────────────────
@@ -174,12 +164,7 @@ export function registerContractTools(server: McpServer) {
     "browse_transfer_orders",
     "Browse transfer orders (inter-warehouse inventory transfers).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/transferorder/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("transferorder")
   );
 
   // ── Get Transfer Order ──────────────────────────────────────────────────
@@ -190,11 +175,11 @@ export function registerContractTools(server: McpServer) {
     {
       transferOrderId: z.string().describe("The transfer order ID"),
     },
-    async ({ transferOrderId }) => {
+    withErrorHandling(async ({ transferOrderId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/transferorder/${transferOrderId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/transferorder/${transferOrderId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Repairs ──────────────────────────────────────────────────────
@@ -203,12 +188,7 @@ export function registerContractTools(server: McpServer) {
     "browse_repairs",
     "Browse repair orders for damaged or maintenance-needed equipment.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/repair/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("repair")
   );
 
   // ── Get Repair ──────────────────────────────────────────────────────────
@@ -219,10 +199,10 @@ export function registerContractTools(server: McpServer) {
     {
       repairId: z.string().describe("The repair ID"),
     },
-    async ({ repairId }) => {
+    withErrorHandling(async ({ repairId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/repair/${repairId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/repair/${repairId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 }

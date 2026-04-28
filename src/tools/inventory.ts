@@ -10,14 +10,10 @@ import { z } from "zod";
 import { getClient } from "../utils/api-client.js";
 import {
   browseSchema,
-  buildBrowseRequest,
-  formatBrowseResult,
+  browseTool,
   formatEntity,
+  withErrorHandling,
 } from "../utils/tool-helpers.js";
-import {
-  inventoryFieldSchema,
-  resolveFieldPreset,
-} from "../utils/browse-helpers.js";
 
 export function registerInventoryTools(server: McpServer) {
   // ── Browse Rental Inventory ─────────────────────────────────────────────
@@ -27,25 +23,17 @@ export function registerInventoryTools(server: McpServer) {
     "Search and browse rental inventory items with filtering, pagination, and sorting. Returns ICode, description, rates, quantities, category, warehouse info.",
     {
       ...browseSchema,
-      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
-      ...inventoryFieldSchema,
+      pageSize: z
+        .coerce.number()
+        .int()
+        .positive()
+        .max(500)
+        .optional()
+        .default(10)
+        .describe("Results per page (default: 10, max: 500)"),
       categoryId: z.string().optional().describe("Filter by rental category ID"),
     },
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.browse("rentalinventory", request);
-
-      const resolvedFields: string[] | undefined =
-        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "rentalInventory");
-
-      return {
-        content: [{
-          type: "text",
-          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
-        }],
-      };
-    }
+    browseTool("rentalinventory")
   );
 
   // ── Get Rental Inventory by ID ──────────────────────────────────────────
@@ -56,11 +44,11 @@ export function registerInventoryTools(server: McpServer) {
     {
       inventoryId: z.string().describe("The rental inventory item ID"),
     },
-    async ({ inventoryId }) => {
+    withErrorHandling(async ({ inventoryId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/rentalinventory/${inventoryId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/rentalinventory/${inventoryId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Create Rental Inventory ─────────────────────────────────────────────
@@ -75,17 +63,17 @@ export function registerInventoryTools(server: McpServer) {
       SubCategoryId: z.string().optional().describe("Sub-category ID"),
       UnitId: z.string().optional().describe("Unit of measure ID"),
       TrackedBy: z.enum(["QUANTITY", "SERIALNO", "BARCODE"]).optional().describe("How this item is tracked"),
-      DailyRate: z.number().optional().describe("Daily rental rate"),
-      WeeklyRate: z.number().optional().describe("Weekly rental rate"),
-      MonthlyRate: z.number().optional().describe("Monthly rental rate"),
-      ReplacementCost: z.number().optional().describe("Replacement cost"),
+      DailyRate: z.coerce.number().optional().describe("Daily rental rate"),
+      WeeklyRate: z.coerce.number().optional().describe("Weekly rental rate"),
+      MonthlyRate: z.coerce.number().optional().describe("Monthly rental rate"),
+      ReplacementCost: z.coerce.number().optional().describe("Replacement cost"),
       WarehouseId: z.string().optional().describe("Default warehouse ID"),
     },
-    async (args) => {
+    withErrorHandling(async (args) => {
       const client = getClient();
-      const data = await client.post("/api/v1/rentalinventory", args);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>("/api/v1/rentalinventory", args);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Update Rental Inventory ─────────────────────────────────────────────
@@ -96,18 +84,18 @@ export function registerInventoryTools(server: McpServer) {
     {
       InventoryId: z.string().describe("The inventory item ID to update"),
       Description: z.string().optional().describe("Updated description"),
-      DailyRate: z.number().optional().describe("Updated daily rate"),
-      WeeklyRate: z.number().optional().describe("Updated weekly rate"),
-      MonthlyRate: z.number().optional().describe("Updated monthly rate"),
-      ReplacementCost: z.number().optional().describe("Updated replacement cost"),
+      DailyRate: z.coerce.number().optional().describe("Updated daily rate"),
+      WeeklyRate: z.coerce.number().optional().describe("Updated weekly rate"),
+      MonthlyRate: z.coerce.number().optional().describe("Updated monthly rate"),
+      ReplacementCost: z.coerce.number().optional().describe("Updated replacement cost"),
       CategoryId: z.string().optional().describe("Updated category ID"),
-      Inactive: z.boolean().optional().describe("Set active/inactive status"),
+      Inactive: z.coerce.boolean().optional().describe("Set active/inactive status"),
     },
-    async ({ InventoryId, ...updates }) => {
+    withErrorHandling(async ({ InventoryId, ...updates }) => {
       const client = getClient();
-      const data = await client.put(`/api/v1/rentalinventory/${InventoryId}`, updates);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.put<Record<string, unknown>>(`/api/v1/rentalinventory/${InventoryId}`, updates);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Delete Rental Inventory ─────────────────────────────────────────────
@@ -118,11 +106,11 @@ export function registerInventoryTools(server: McpServer) {
     {
       inventoryId: z.string().describe("The inventory item ID to delete"),
     },
-    async ({ inventoryId }) => {
+    withErrorHandling(async ({ inventoryId }) => {
       const client = getClient();
       await client.delete(`/api/v1/rentalinventory/${inventoryId}`);
       return { content: [{ type: "text", text: `Rental inventory ${inventoryId} deleted.` }] };
-    }
+    })
   );
 
   // ── Browse Sales Inventory ──────────────────────────────────────────────
@@ -131,12 +119,7 @@ export function registerInventoryTools(server: McpServer) {
     "browse_sales_inventory",
     "Search and browse sales inventory items (items for sale, not rental).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/salesinventory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("salesinventory")
   );
 
   // ── Get Sales Inventory by ID ───────────────────────────────────────────
@@ -147,11 +130,11 @@ export function registerInventoryTools(server: McpServer) {
     {
       inventoryId: z.string().describe("The sales inventory item ID"),
     },
-    async ({ inventoryId }) => {
+    withErrorHandling(async ({ inventoryId }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/salesinventory/${inventoryId}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/salesinventory/${inventoryId}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Browse Parts Inventory ──────────────────────────────────────────────
@@ -160,12 +143,7 @@ export function registerInventoryTools(server: McpServer) {
     "browse_parts_inventory",
     "Search and browse parts inventory (consumable parts and supplies).",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/partsinventory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("partsinventory")
   );
 
   // ── Browse Individual Items (Barcoded/Serialized) ───────────────────────
@@ -175,24 +153,16 @@ export function registerInventoryTools(server: McpServer) {
     "Search serialized/barcoded individual items (physical assets). Find by barcode, serial number, or description.",
     {
       ...browseSchema,
-      pageSize: z.number().optional().default(10).describe("Results per page (default: 10, max: 500)"),
-      ...inventoryFieldSchema,
+      pageSize: z
+        .coerce.number()
+        .int()
+        .positive()
+        .max(500)
+        .optional()
+        .default(10)
+        .describe("Results per page (default: 10, max: 500)"),
     },
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.browse("item", request);
-
-      const resolvedFields: string[] | undefined =
-        args.fields ?? resolveFieldPreset(args.fieldPreset ?? "summary", "items");
-
-      return {
-        content: [{
-          type: "text",
-          text: formatBrowseResult(data as any, resolvedFields ? { fields: resolvedFields } : undefined),
-        }],
-      };
-    }
+    browseTool("item")
   );
 
   // ── Get Item by Barcode ─────────────────────────────────────────────────
@@ -203,11 +173,11 @@ export function registerInventoryTools(server: McpServer) {
     {
       barcode: z.string().describe("The barcode to look up"),
     },
-    async ({ barcode }) => {
+    withErrorHandling(async ({ barcode }) => {
       const client = getClient();
-      const data = await client.get(`/api/v1/item/bybarcode?barCode=${encodeURIComponent(barcode)}`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.get<Record<string, unknown>>(`/api/v1/item/bybarcode?barCode=${encodeURIComponent(barcode)}`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 
   // ── Inventory Availability ──────────────────────────────────────────────
@@ -216,11 +186,11 @@ export function registerInventoryTools(server: McpServer) {
     "get_inventory_availability",
     "Get the rental inventory availability legend — reference data explaining what each availability status means.",
     {},
-    async () => {
+    withErrorHandling(async () => {
       const client = getClient();
       const data = await client.get("/api/v1/rentalinventory/availabilitylegend");
       return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] };
-    }
+    })
   );
 
   // ── Physical Inventory Browse ───────────────────────────────────────────
@@ -229,12 +199,7 @@ export function registerInventoryTools(server: McpServer) {
     "browse_physical_inventory",
     "Browse physical inventory count sessions. Used for cycle counts and full physical inventories.",
     browseSchema,
-    async (args) => {
-      const client = getClient();
-      const request = buildBrowseRequest(args);
-      const data = await client.post("/api/v1/physicalinventory/browse", request);
-      return { content: [{ type: "text", text: formatBrowseResult(data as any) }] };
-    }
+    browseTool("physicalinventory")
   );
 
   // ── Copy Rental Inventory ───────────────────────────────────────────────
@@ -245,10 +210,10 @@ export function registerInventoryTools(server: McpServer) {
     {
       inventoryId: z.string().describe("The source inventory item ID to copy"),
     },
-    async ({ inventoryId }) => {
+    withErrorHandling(async ({ inventoryId }) => {
       const client = getClient();
-      const data = await client.post(`/api/v1/rentalinventory/${inventoryId}/copy`);
-      return { content: [{ type: "text", text: formatEntity(data as any) }] };
-    }
+      const data = await client.post<Record<string, unknown>>(`/api/v1/rentalinventory/${inventoryId}/copy`);
+      return { content: [{ type: "text", text: formatEntity(data) }] };
+    })
   );
 }
