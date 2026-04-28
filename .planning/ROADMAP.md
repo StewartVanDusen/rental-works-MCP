@@ -27,6 +27,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 8: Schema and Formatter Extension** - Add optional fields/clientFilter params to inventory tool schemas; extend formatBrowseResult with field projection
 - [ ] **Phase 9: Inventory Handler Wiring** - Wire helpers into inventory browse handlers with BRIEF_FIELDS defaults, smaller page size, and corrected pagination metadata
 - [ ] **Phase 10: Integration Verification** - Read-only live API tests confirming field selection, client-side fallback, and default behavior against real inventory data
+- [ ] **Phase 11: Comprehensive Browse Tool Hardening** (INSERTED 2026-04-28) - Extend the inventory fix to every browse/get tool: route all 35+ browse handlers through `client.browse()`, coerce numeric schema inputs, wire `withErrorHandling()` universally, trim `get_session`, brief-preset all entities
 
 ## Phase Details
 
